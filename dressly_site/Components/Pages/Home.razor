@@ -1,0 +1,119 @@
+﻿@page "/home"
+@inject NavigationManager Navigation
+
+<!-- כותרת ברוכים הבאים -->
+<div class="center-title">
+    <h1>!ברוכים הבאים</h1>
+</div>
+
+<div class="container">
+    <!-- תוכן נוסף -->
+    <div class="card text-right">
+        <p>:סה"כ פריטים בארון</p>
+        <h2>45</h2>
+    </div>
+
+    <div class="card text-right">
+        <p>:אאוטפיטים מתוכננים</p>
+        <h2>3</h2>
+    </div>
+
+    <div class="card text-right">
+        <p>:פריטים שלא נלבשו זמן רב</p>
+        <h2>5</h2>
+    </div>
+
+    <div class="reminders card text-right">
+        <h2>:תזכורות</h2>
+        <ul>
+            <li>3 חולצות ונעל אחת הגיעו למגבלת השימוש</li>
+            <li>המלצת אאוטפיט ליום: חולצה לבנה, ג'ינס כחול, ונעליים חומות</li>
+        </ul>
+    </div>
+
+    <div class="quick-actions">
+        <button class="btn pink-btn" @onclick="NavigateToAddItem">הוסף פריט חדש</button>
+        <button class="btn pink-btn" @onclick="NavigateToOutfitPlanner">צור אאוטפיט חדש</button>
+        <button class="btn pink-btn" @onclick="NavigateToPlannedOutfits">ראה אאוטפיטים מתוכננים</button>
+    </div>
+</div>
+
+<style>
+    /* מרכזת את הכותרת לרוחב המסך */
+    .center-title {
+        text-align: center; /* ממרכז את הטקסט לרוחב */
+        margin-bottom: 20px; /* רווח תחתון לכותרת */
+    }
+
+        .center-title h1 {
+            font-size: 3rem; /* גודל הכותרת */
+            margin: 0; /* ביטול מרווחים חיצוניים */
+        }
+
+    /* עיצוב הקונטיינר */
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: right;
+        font-family: Arial, sans-serif;
+    }
+
+    /* עיצוב הכרטיסים */
+    .card {
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        background-color: #f9f9f9;
+    }
+
+    /* עיצוב הכפתורים */
+    .btn {
+        font-size: 1.2rem;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 10px 5px;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .pink-btn {
+        background-color: #ff69b4;
+        color: white;
+    }
+
+        .pink-btn:hover {
+            background-color: #ff1493;
+            transform: scale(1.05);
+        }
+
+    /* רשימות */
+    ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    li {
+        margin: 5px 0;
+    }
+</style>
+
+@code {
+    private void NavigateToAddItem()
+    {
+        Navigation.NavigateTo("/add-item"); // ניווט לעמוד הוספת פריט
+    }
+
+    private void NavigateToOutfitPlanner()
+    {
+        Navigation.NavigateTo("/plan-outfits"); // ניווט לעמוד תכנון אאוטפיט
+    }
+
+    private void NavigateToPlannedOutfits()
+    {
+        Navigation.NavigateTo("/outfit-list"); // ניווט לעמוד אאוטפיטים מתוכננים
+    }
+}

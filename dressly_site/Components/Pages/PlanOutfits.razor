@@ -1,0 +1,66 @@
+﻿@page "/plan-outfits"
+@inject NavigationManager Navigation
+
+<div class="center-content">
+    <h1>תכנון אאוטפיט</h1>
+    <div class="button-container">
+        <button class="btn pink-btn" @onclick="NavigateToNextPage">אאוטפיט לפי נושאים</button>
+        <button class="btn pink-btn" @onclick="NavigateToAnotherPage">אאוטפיט כללי</button>
+    </div>
+</div>
+
+<style>
+    /* מרכז את כל התוכן באמצע המסך */
+    .center-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh; /* תופס את כל גובה המסך */
+        text-align: center;
+    }
+
+    /* עיצוב הכפתורים */
+    .btn {
+        font-size: 1.5rem; /* גודל טקסט גדול יותר */
+        padding: 15px 30px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 10px; /* רווח בין הכפתורים */
+    }
+
+    /* כפתורים בצבע ורוד */
+    .pink-btn {
+        background-color: #ff69b4; /* ורוד */
+        color: white;
+    }
+
+        .pink-btn:hover {
+            background-color: #ff1493; /* ורוד כהה יותר */
+        }
+
+    /* מיכל לכפתורים */
+    .button-container {
+        display: flex;
+        gap: 15px; /* רווח בין הכפתורים */
+    }
+
+    /* כותרת גדולה */
+    h1 {
+        font-size: 3rem;
+        margin-bottom: 20px;
+    }
+</style>
+
+@code {
+    private void NavigateToNextPage()
+    {
+        Navigation.NavigateTo("/outfit-planner-thematic"); // ניווט לעמוד "אאוטפיט לפי נושאים"
+    }
+
+    private void NavigateToAnotherPage()
+    {
+        Navigation.NavigateTo("/plan-outfits-general"); // ניווט לעמוד "אאוטפיט כללי"
+    }
+}

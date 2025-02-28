@@ -1,0 +1,247 @@
+﻿@page "/outfit-list"
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+
+@using MySql.Data.MySqlClient
+@using System.Linq
+
+<div class="center-page">
+    <h1>הצג את האאוטפיטים שלי</h1>
+
+    <div class="filter-container-left">
+        <label for="outfit-filter">בחר:</label>
+        <InputSelect id="outfit-filter" @bind-Value="outfitFilter" class="filter-select">
+            <option value="All">הראה את כל האאוטפיטים</option>
+            <option value="Favorites">הראה רק מועדפים</option>
+        </InputSelect>
+    </div>
+
+    <div class="form-container">
+        @foreach (var outfit in FilterOutfits(outfits, outfitFilter))
+        {
+            <div class="form-group">
+                <div class="item-card" @onmouseover="() => ShowFavoriteButton(outfit)" @onmouseleave="() => HideFavoriteButton(outfit)">
+                    <img src="@outfit.ImageURL" alt="@outfit.Name" class="item-image" />
+                    <div class="item-details">
+                        <p>@outfit.Name</p>
+                        <p>@outfit.Description</p>
+
+                        @if (outfitFilter == "All")
+                        {
+                            <button class="btn pink-btn favorite-btn" @onclick="() => AddToFavorites(outfit)" style="display:@(outfit.IsHovered ? "block" : "none")">הוסף למועדפים</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (outfitFilter == "All")
+        {
+            <button type="submit" class="btn pink-btn">עדכן מועדפים</button>
+        }
+    </div>
+</div>
+
+@if (outfitSelection.IsUpdated)
+{
+    <h4>העדכון בוצע בהצלחה!</h4>
+}
+
+@code {
+    private OutfitSelection outfitSelection = new OutfitSelection();
+    private List<Outfit> outfits = new List<Outfit>();
+    private string outfitFilter = "All"; // ברירת מחדל היא להציג את כל האאוטפיטים
+
+    private async Task HandleValidSubmit()
+    {
+        // עדכון האאוטפיטים המועדפים בבסיס הנתונים
+        await UpdateFavoriteOutfits();
+    }
+
+    private async Task LoadOutfits()
+    {
+        var connectionString = Configuration.GetConnectionString("DefaultConnection");
+
+        try
+        {
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                var query = @"SELECT * FROM Outfits WHERE UserID = @UserID";
+                using (var command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@UserID", 1); // תוסיף את ה-UserID של המשתמש המחובר
+                    var reader = await command.ExecuteReaderAsync();
+                    var items = new List<Outfit>();
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new Outfit
+                            {
+                                OutfitID = reader.GetInt32(reader.GetOrdinal("OutfitID")),
+                                Name = reader.GetString(reader.GetOrdinal("Name")),
+                                Description = reader.GetString(reader.GetOrdinal("Description")),
+                                ImageURL = reader.GetString(reader.GetOrdinal("ImageURL")),
+                                IsFavorite = reader.GetBoolean(reader.GetOrdinal("IsFavorite")),
+                                IsHovered = false // ברירת מחדל - הכפתור לא מוצג
+                            });
+                    }
+                    outfits = items;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateFavoriteOutfits()
+    {
+        var connectionString = Configuration.GetConnectionString("DefaultConnection");
+
+        try
+        {
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                foreach (var outfit in outfits)
+                {
+                    var query = @"UPDATE Outfits SET IsFavorite = @IsFavorite WHERE OutfitID = @OutfitID";
+
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@IsFavorite", outfit.IsFavorite);
+                        command.Parameters.AddWithValue("@OutfitID", outfit.OutfitID);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+                outfitSelection.IsUpdated = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating favorite outfits: {ex.Message}");
+        }
+    }
+
+    private void AddToFavorites(Outfit outfit)
+    {
+        outfit.IsFavorite = true;  // סימן את האאוטפיט כמועדף
+    }
+
+    private void ShowFavoriteButton(Outfit outfit)
+    {
+        outfit.IsHovered = true; // הצגת כפתור "הוסף למועדפים" כשהעכבר מעל האאוטפיט
+    }
+
+    private void HideFavoriteButton(Outfit outfit)
+    {
+        outfit.IsHovered = false; // הסתרת כפתור "הוסף למועדפים" כאשר העכבר יוצא
+    }
+
+    private IEnumerable<Outfit> FilterOutfits(List<Outfit> outfits, string filter)
+    {
+        if (filter == "Favorites")
+        {
+            return outfits.Where(outfit => outfit.IsFavorite);
+        }
+
+        return outfits; // אם לא נבחר סינון, נחזיר את כל האאוטפיטים
+    }
+
+    public class OutfitSelection
+    {
+        public bool IsUpdated { get; set; } = false;
+    }
+
+    public class Outfit
+    {
+        public int OutfitID { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string ImageURL { get; set; }
+        public bool IsFavorite { get; set; }
+        public bool IsHovered { get; set; } // עבור מצב הצגת כפתור הוספה למועדפים
+    }
+}
+
+<style>
+    .center-page {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+    }
+
+    .form-container {
+        width: 100%;
+        max-width: 800px;
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .item-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        margin-bottom: 20px;
+    }
+
+        .item-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+    .item-image {
+        width: 100px;
+        height: 100px;
+        border-radius: 5px;
+    }
+
+    .item-details {
+        margin-top: 10px;
+    }
+
+    .favorite-btn {
+        font-size: 1.2rem;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        margin-top: 10px;
+    }
+
+    .pink-btn {
+        background-color: #ff69b4;
+        color: white;
+    }
+
+        .pink-btn:hover {
+            background-color: #ff1493;
+            transform: scale(1.05);
+        }
+
+    .filter-container {
+        margin-bottom: 20px;
+    }
+
+    .filter-select {
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    .favorite-btn {
+        display: none; /* מוסתר כברירת מחדל */
+    }
+</style>

@@ -1,0 +1,197 @@
+﻿@page "/outfit-planner-thematic"
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+
+@using MySql.Data.MySqlClient
+@using System.Diagnostics
+
+<div class="center-page">
+    <h1>תכנון אאוטפיט לפי נושא</h1>
+
+    <div class="form-container">
+        <EditForm Model="@outfitSelection" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <!-- שאלת עונה -->
+            <div class="form-group">
+                <label for="season">בחר עונה:</label>
+                <InputSelect id="season" @bind-Value="outfitSelection.Season">
+                    <option value="1">קיץ</option>
+                    <option value="2">חורף</option>
+                </InputSelect>
+            </div>
+
+            <!-- שאלת סגנון -->
+            <div class="form-group">
+                <label for="style">בחר סגנון:</label>
+                <InputSelect id="style" @bind-Value="outfitSelection.Style">
+                    <option value="1">חולצה ומכנס</option>
+                    <option value="2">חצאית וגופייה</option>
+                    <option value="3">שמלה</option>
+                </InputSelect>
+            </div>
+
+            <!-- כפתור שליחה -->
+            <button type="submit" class="btn pink-btn">המשך לתכנון</button>
+        </EditForm>
+    </div>
+</div>
+
+@if (outfitSelection.IsOutfitComplete)
+{
+    <h4>השלב הבא: בחירת פריטים</h4>
+    <div>
+        <!-- כאן תציג את אפשרויות הבחירה פר פריט -->
+    </div>
+}
+
+<style>
+    .center-page {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        margin-bottom: 30px;
+    }
+
+    .form-container {
+        width: 100%;
+        max-width: 600px;
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+        text-align: right;
+    }
+
+    label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-align: right;
+    }
+
+    select, input, .file-upload {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+        text-align: right;
+    }
+
+    .btn {
+        font-size: 1.5rem;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 20px;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .pink-btn {
+        background-color: #ff69b4;
+        color: white;
+    }
+
+        .pink-btn:hover {
+            background-color: #ff1493;
+            transform: scale(1.05);
+        }
+</style>
+
+@code {
+    private OutfitSelection outfitSelection = new OutfitSelection();
+    private List<ClothingItem> clothingItems = new List<ClothingItem>();
+
+    private async Task HandleValidSubmit()
+    {
+        Debug.WriteLine($"Season value: {outfitSelection.Season}, Type: {outfitSelection.Season.GetType()}");
+
+        int season;
+        if (!int.TryParse(outfitSelection.Season.ToString(), out season))
+        {
+            Debug.WriteLine("Season לא הומר למספר שלם. עצירת התהליך.");
+            return;
+        }
+
+        clothingItems = await LoadClothingItemsBySeason(season);
+
+        if (outfitSelection.Style == 1)
+        {
+            clothingItems = clothingItems.Where(item => item.Category == "Shirt" || item.Category == "Pants").ToList();
+        }
+        else if (outfitSelection.Style == 2)
+        {
+            clothingItems = clothingItems.Where(item => item.Category == "Skirt" || item.Category == "Top").ToList();
+        }
+        else if (outfitSelection.Style == 3)
+        {
+            clothingItems = clothingItems.Where(item => item.Category == "Dress").ToList();
+        }
+
+        outfitSelection.IsOutfitComplete = true;
+    }
+
+    private async Task<List<ClothingItem>> LoadClothingItemsBySeason(int season)
+    {
+        var connectionString = Configuration.GetConnectionString("DefaultConnection");
+
+        try
+        {
+            using (var connection = new MySqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                var query = @"SELECT * FROM ClothingItems WHERE Season = @Season";
+                using (var command = new MySqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@Season", season);
+                    var reader = await command.ExecuteReaderAsync();
+                    var items = new List<ClothingItem>();
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new ClothingItem
+                            {
+                                ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
+                                Category = reader.GetString(reader.GetOrdinal("Category")),
+                                ImageURL = reader.GetString(reader.GetOrdinal("ImageURL"))
+                            });
+                    }
+                    return items;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error: {ex.Message}");
+            return new List<ClothingItem>();
+        }
+    }
+
+    public class OutfitSelection
+    {
+        public int Season { get; set; }
+        public int Style { get; set; }
+        public bool IsOutfitComplete { get; set; } = false;
+    }
+
+    public class ClothingItem
+    {
+        public int ItemID { get; set; }
+        public string Category { get; set; }
+        public string ImageURL { get; set; }
+    }
+}

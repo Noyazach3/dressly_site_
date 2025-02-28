@@ -1,0 +1,219 @@
+﻿@page "/add-item"
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<div class="center-page">
+    <h1>העלאת פריט לבוש</h1>
+
+    <div class="form-container text-right">
+        <EditForm Model="@clothingItem" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <!-- העלאת תמונה -->
+            <div class="form-group">
+                <label for="imageUpload">:העלה תמונה</label>
+                <InputFile id="imageUpload" OnChange="HandleFileSelected" class="file-upload" />
+            </div>
+
+            <!-- בחירת סוג פריט -->
+            <div class="form-group">
+                <label for="category">:בחר סוג פריט</label>
+                <InputSelect id="category" @bind-Value="clothingItem.Category">
+                    <option value="Shirt">חולצה</option>
+                    <option value="Pants">מכנסיים</option>
+                    <option value="Skirt">חצאית</option>
+                    <option value="Dress">שמלה</option>
+                    <option value="TankTop">גופייה</option>
+                    <option value="Cardigan">עליונית</option>
+                    <option value="Jacket">גקט</option>
+                    <option value="Bag">תיק</option>
+                    <option value="Shoes">נעליים</option>
+                    <option value="Accessories">אקססוריז</option>
+                </InputSelect>
+            </div>
+
+            <!-- בחירת עונה -->
+            <div class="form-group">
+                <label for="season">:בחר עונה</label>
+                <InputSelect id="season" @bind-Value="clothingItem.Season">
+                    <option value="Summer">קיץ</option>
+                    <option value="Winter">חורף</option>
+                </InputSelect>
+            </div>
+
+            <!-- בחירת שימוש -->
+            <div class="form-group">
+                <label for="usageType">:בחר סוג שימוש</label>
+                <InputSelect id="usageType" @bind-Value="clothingItem.UsageType">
+                    <option value="Casual">יום-יומי</option>
+                    <option value="Festive">חגיגי</option>
+                </InputSelect>
+            </div>
+
+            <!-- בחירת צבע -->
+            <div class="form-group">
+                <label for="color">:בחר צבע</label>
+                <InputSelect id="color" @bind-Value="clothingItem.Color">
+                    <option value="Red">אדום</option>
+                    <option value="Blue">כחול</option>
+                    <option value="Green">ירוק</option>
+                    <option value="Yellow">צהוב</option>
+                    <option value="Black">שחור</option>
+                    <option value="White">לבן</option>
+                </InputSelect>
+            </div>
+
+            <!-- בחירת מספר שימושים לפני כביסה -->
+            <div class="form-group">
+                <label for="washAfterUses">?כל כמה שימושים לכבס את הפריט</label>
+                <InputSelect id="washAfterUses" @bind-Value="clothingItem.WashAfterUses">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </InputSelect>
+            </div>
+
+            <button type="submit" class="btn pink-btn">העלה פריט</button>
+        </EditForm>
+    </div>
+</div>
+
+<style>
+    .center-page {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 3rem;
+        margin-bottom: 30px;
+    }
+
+    .form-container {
+        width: 100%;
+        max-width: 600px;
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+        text-align: right;
+    }
+
+    label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-align: right;
+    }
+
+    select, input, .file-upload {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+        text-align: right;
+    }
+
+    .btn {
+        font-size: 1.2rem;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .pink-btn {
+        background-color: #ff69b4;
+        color: white;
+    }
+
+        .pink-btn:hover {
+            background-color: #ff1493;
+            transform: scale(1.05);
+        }
+</style>
+
+@code {
+    private ClothingItem clothingItem = new ClothingItem();
+    private IBrowserFile selectedFile;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (selectedFile != null)
+        {
+            // שמירת הקובץ בשרת (ניתן להתאים את הלוגיקה לפי הצורך)
+            var filePath = Path.Combine("wwwroot", "images", selectedFile.Name);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await selectedFile.OpenReadStream().CopyToAsync(stream);
+            }
+
+            clothingItem.ImageURL = filePath;
+            clothingItem.DateAdded = DateTime.Now;
+
+            // קריאה ל-API לעדכון הדאטהבייס
+            await SaveClothingItemToDatabase(clothingItem);
+
+            // ניווט לעמוד הבית לאחר העדכון
+            NavigateToHome();
+        }
+    }
+
+    private async Task SaveClothingItemToDatabase(ClothingItem item)
+    {
+        HttpResponseMessage response;
+
+        if (item.ItemID == 0)
+        {
+            // יצירת פריט חדש עם POST
+            response = await Http.PostAsJsonAsync("api/clothingitems", item);
+        }
+        else
+        {
+            // עדכון פריט קיים עם PUT
+            response = await Http.PutAsJsonAsync($"api/clothingitems/{item.ItemID}", item);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // טיפול בשגיאה - ניתן להוסיף הודעת שגיאה למשתמש
+            Console.WriteLine("אירעה שגיאה בעדכון הפריט");
+        }
+    }
+
+    private void NavigateToHome()
+    {
+        Navigation.NavigateTo("/home");
+    }
+
+    public class ClothingItem
+    {
+        public int ItemID { get; set; } // 0 לפריט חדש
+        public string Category { get; set; }
+        public string Season { get; set; }
+        public string UsageType { get; set; }
+        public string Color { get; set; }
+        public string ImageURL { get; set; }
+        public int WashAfterUses { get; set; }
+        public DateTime DateAdded { get; set; }
+    }
+}

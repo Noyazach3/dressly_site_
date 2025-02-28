@@ -1,0 +1,157 @@
+﻿@page "/admin-dashboard"
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<h1 class="text-center mt-4">🌞 ניהול מערכת</h1>
+
+@if (!IsAdmin)
+{
+    <div class="alert alert-danger text-center mt-4">
+        אין לך הרשאות גישה לדף זה.
+    </div>
+}
+else
+{
+    <div class="container mt-5">
+        <div class="row">
+            <!-- ניהול משתמשים -->
+            <div class="col-md-6">
+                <h3>🔹 ניהול משתמשים</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>שם משתמש</th>
+                            <th>אימייל</th>
+                            <th>תפקיד</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Users.Any())
+                        {
+                            @foreach (var user in Users)
+                            {
+                                <tr>
+                                    <td>@user.Username</td>
+                                    <td>@user.Email</td>
+                                    <td>@user.Role</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteUser(user.Username)">🗑 מחיקה</button>
+                                        <button class="btn btn-warning btn-sm" @onclick="() => ResetPassword(user.Username)">🔄 איפוס סיסמה</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center">אין משתמשים במערכת.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- סטטיסטיקות מערכת -->
+            <div class="col-md-6">
+                <h3>📊 סטטיסטיקות מערכת</h3>
+                <ul class="list-group">
+                    <li class="list-group-item">👥 מספר משתמשים: <strong>@TotalUsers</strong></li>
+                    <li class="list-group-item">👗 מספר בגדים שהועלו: <strong>@TotalClothingItems</strong></li>
+                    <li class="list-group-item">
+                        🔥 קטגוריות פופולריות:
+                        <ul>
+                            @foreach (var category in PopularCategories)
+                            {
+                                <li>@category.Name - @category.Count שימושים</li>
+                            }
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsAdmin = false;
+    private List<UserInfo> Users = new();
+    private int TotalUsers = 0;
+    private int TotalClothingItems = 0;
+    private List<CategoryStat> PopularCategories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var client = ClientFactory.CreateClient("API");
+        var response = await client.GetFromJsonAsync<UserRoleResponse>("Admin/GetUserRole");
+
+        if (response != null)
+        {
+            IsAdmin = response.Role == "Admin";
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "role", response.Role); // עדכון localStorage
+        }
+    }
+
+    private async Task LoadUsers()
+    {
+        var client = ClientFactory.CreateClient("API");
+        Users = await client.GetFromJsonAsync<List<UserInfo>>("Admin/GetUsers") ?? new List<UserInfo>();
+    }
+
+    private async Task LoadStatistics()
+    {
+        var client = ClientFactory.CreateClient("API");
+        var stats = await client.GetFromJsonAsync<StatisticsResponse>("Admin/GetStatistics");
+
+        if (stats != null)
+        {
+            TotalUsers = stats.TotalUsers;
+            TotalClothingItems = stats.TotalClothingItems;
+            PopularCategories = stats.PopularCategories;
+        }
+    }
+
+    private async Task DeleteUser(string username)
+    {
+        var client = ClientFactory.CreateClient("API");
+        var response = await client.DeleteAsync($"Admin/DeleteUser?username={Uri.EscapeDataString(username)}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            Users.RemoveAll(u => u.Username == username);
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResetPassword(string username)
+    {
+        var client = ClientFactory.CreateClient("API");
+        await client.PostAsync($"Admin/ResetPassword?username={Uri.EscapeDataString(username)}", null);
+    }
+
+    public class UserRoleResponse
+    {
+        public string Role { get; set; } = string.Empty;
+    }
+
+    public class UserInfo
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    }
+
+    public class CategoryStat
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Count { get; set; }
+    }
+
+    public class StatisticsResponse
+    {
+        public int TotalUsers { get; set; }
+        public int TotalClothingItems { get; set; }
+        public List<CategoryStat> PopularCategories { get; set; } = new();
+    }
+}
