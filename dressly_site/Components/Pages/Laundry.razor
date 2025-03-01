@@ -2,6 +2,8 @@
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@using ClassLibrary1.Models
+
 
 
 @using MySql.Data.MySqlClient
@@ -22,7 +24,7 @@
                     <div class="item-card">
                         <img src="@item.ImageURL" alt="@item.Category" class="item-image" />
                         <div class="item-details">
-                            <p>@item.Category - @item.Color</p>
+                            <p>@item.Category - @item.ColorName</p>
                             <p>מספר כביסות: @item.WashAfterUses</p>
                             <InputCheckbox @bind-Value="item.IsWashed" /> <label>כובס</label>
                         </div>
@@ -70,7 +72,7 @@
                             {
                                 ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
                                 Category = reader.GetString(reader.GetOrdinal("Category")),
-                                Color = reader.GetString(reader.GetOrdinal("Color")),
+                                ColorName = reader.GetString(reader.GetOrdinal("Color")),
                                 ImageURL = reader.GetString(reader.GetOrdinal("ImageURL")),
                                 WashAfterUses = reader.GetInt32(reader.GetOrdinal("WashAfterUses")),
                                 IsWashed = reader.GetBoolean(reader.GetOrdinal("IsWashed"))  // נניח שיש עמודה כזו בבסיס הנתונים
@@ -120,15 +122,6 @@
         public bool IsUpdated { get; set; } = false;
     }
 
-    public class ClothingItem
-    {
-        public int ItemID { get; set; }
-        public string Category { get; set; }
-        public string Color { get; set; }
-        public string ImageURL { get; set; }
-        public int WashAfterUses { get; set; }
-        public bool IsWashed { get; set; }
-    }
 }
 
 <style>

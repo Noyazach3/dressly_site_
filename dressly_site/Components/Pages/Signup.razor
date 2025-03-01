@@ -1,53 +1,43 @@
 ﻿@page "/signup"
 @inject NavigationManager Navigation
 @inject IHttpClientFactory ClientFactory
+@using ClassLibrary1.Models
 
-<!-- כותרת הדף -->
 <h1 style="text-align:center;">הרשמה</h1>
 
-<!-- קונטיינר מרכזי עם רוחב מקסימלי 400px ומרווח מלמעלה -->
 <div class="container" style="max-width: 400px; margin-top: 20px;">
-    <!-- טופס הרשמה עם EditForm המקושר למודל "user" -->
     <EditForm Model="@user" OnValidSubmit="HandleValidSubmit">
-        <!-- אימות באמצעות DataAnnotations -->
         <DataAnnotationsValidator />
-        <!-- הצגת סיכום שגיאות אם יש -->
         <ValidationSummary />
 
-        <!-- שדה להזנת שם משתמש -->
         <div class="form-group">
             <label for="username" style="text-align: right; display: block;">:שם משתמש</label>
             <InputText id="username" class="form-control" @bind-Value="user.Username" required />
         </div>
-        
-        <!-- שדה להזנת אימייל -->
+
         <div class="form-group">
             <label for="email" style="text-align: right; display: block;">:אימייל</label>
             <InputText id="email" type="email" class="form-control" @bind-Value="user.Email" required />
         </div>
-        
-        <!-- שדה להזנת סיסמה -->
+
         <div class="form-group">
-            <label for="PasswordHash" style="text-align: right; display: block;">:סיסמה</label>
-            <InputText id="PasswordHash" type="password" class="form-control" @bind-Value="user.PasswordHash" required />
+            <label for="password" style="text-align: right; display: block;">:סיסמה</label>
+            <InputText id="password" type="password" class="form-control" @bind-Value="user.PasswordHash" required />
         </div>
-        
-        <!-- לחצן שליחת הטופס עם עיצוב דומה לעמוד Login -->
+
         <div class="form-group" style="margin-top: 20px;">
-            <button type="submit" class="btn btn-lg" 
-                    style="background-color: #ff69b4; border: none; font-size: 1.25em; font-weight: bold; width: 100%; 
+            <button type="submit" class="btn btn-lg"
+                    style="background-color: #ff69b4; border: none; font-size: 1.25em; font-weight: bold; width: 100%;
                            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2); transform: translateY(0); transition: transform 0.2s ease;">
                 הירשם
             </button>
         </div>
     </EditForm>
 
-    <!-- קישור לדף Login למשתמש שכבר רשום -->
     <div style="margin-top: 10px; text-align: center;">
         <p>כבר יש לך חשבון? <a href="/login">התחבר כאן</a></p>
     </div>
 
-    <!-- הצגת הודעות שגיאה או הצלחה (אם קיימות) -->
     @if (!string.IsNullOrEmpty(Message))
     {
         <div class="alert alert-danger mt-3">
@@ -63,50 +53,38 @@
 </div>
 
 @code {
-    // מודל המשתמש שיתמלא בטופס ההרשמה
     private User user = new User();
 
-    // משתנים להצגת הודעות שגיאה והצלחה
     private string Message;
     private string SuccessMessage;
 
-    // מתודה שמופעלת כאשר הטופס עובר ולידציה בהצלחה
     private async Task HandleValidSubmit()
     {
-        // איפוס הודעות לפני השליחה
         Message = string.Empty;
         SuccessMessage = string.Empty;
+
         try
         {
-            // יצירת לקוח HTTP מה-ClientFactory עם שם "API"
-            var client = ClientFactory.CreateClient("API");
-            // שליחת בקשת POST עם נתוני המשתמש (בפורמט JSON) לנתיב "User/Register"
+            var client = ClientFactory.CreateClient();
+            client.BaseAddress = new Uri("http://localhost:5177/api/"); // ודא שזה ה-URL הנכון של ה-API שלך
+
             var response = await client.PostAsJsonAsync("User/Register", user);
             if (response.IsSuccessStatusCode)
             {
-                // במידה וההרשמה הצליחה – עדכון הודעה וניווט לדף Login
                 SuccessMessage = "הרישום בוצע בהצלחה!";
                 Navigation.NavigateTo("/login");
             }
             else
             {
-                // במקרה של כשל – קריאה והצגת תוכן השגיאה מהשרת
                 var errorContent = await response.Content.ReadAsStringAsync();
                 Message = $"אירעה שגיאה בעת ההרשמה: {errorContent}";
             }
         }
         catch (Exception ex)
         {
-            // טיפול בשגיאות בלתי צפויות
             Message = $"אירעה שגיאה: {ex.Message}";
         }
     }
 
-    // מחלקה המייצגת את המודל של המשתמש
-    public class User
-    {
-        public string Username { get; set; }    // שם המשתמש
-        public string Email { get; set; }       // כתובת האימייל
-        public string PasswordHash { get; set; }  // הסיסמה (ניתן להוסיף מנגנון הצפנה בעתיד)
-    }
+   
 }

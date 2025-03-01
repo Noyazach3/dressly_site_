@@ -19,6 +19,8 @@ namespace ClassLibrary1.Models
         public int WashAfterUses { get; set; } = 1;
         public string UsageType { get; set; } // סוג השימוש
         public string ColorName { get; set; } // שם הצבע
+        public bool IsWashed { get; set; }
+
 
         public User User { get; set; }
         public Color Color { get; set; }

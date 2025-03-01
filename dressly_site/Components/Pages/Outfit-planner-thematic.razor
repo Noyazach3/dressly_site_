@@ -2,6 +2,8 @@
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@using ClassLibrary1.Models
+
 
 
 @using MySql.Data.MySqlClient
@@ -188,10 +190,5 @@
         public bool IsOutfitComplete { get; set; } = false;
     }
 
-    public class ClothingItem
-    {
-        public int ItemID { get; set; }
-        public string Category { get; set; }
-        public string ImageURL { get; set; }
-    }
+   
 }

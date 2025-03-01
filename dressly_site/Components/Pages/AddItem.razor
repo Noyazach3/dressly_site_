@@ -2,6 +2,8 @@
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@using ClassLibrary1.Models
+
 
 <div class="center-page">
     <h1>העלאת פריט לבוש</h1>
@@ -55,13 +57,13 @@
             <!-- בחירת צבע -->
             <div class="form-group">
                 <label for="color">:בחר צבע</label>
-                <InputSelect id="color" @bind-Value="clothingItem.Color">
-                    <option value="Red">אדום</option>
-                    <option value="Blue">כחול</option>
-                    <option value="Green">ירוק</option>
-                    <option value="Yellow">צהוב</option>
-                    <option value="Black">שחור</option>
-                    <option value="White">לבן</option>
+                <InputSelect id="color" @bind-Value="clothingItem.ColorName">
+                    <option value="Red">Red</option>
+                    <option value="Blue">Blue</option>
+                    <option value="Green">Green</option>
+                    <option value="Yellow">Yellow</option>
+                    <option value="Black">Black</option>
+                    <option value="White">White</option>
                 </InputSelect>
             </div>
 
@@ -205,15 +207,4 @@
         Navigation.NavigateTo("/home");
     }
 
-    public class ClothingItem
-    {
-        public int ItemID { get; set; } // 0 לפריט חדש
-        public string Category { get; set; }
-        public string Season { get; set; }
-        public string UsageType { get; set; }
-        public string Color { get; set; }
-        public string ImageURL { get; set; }
-        public int WashAfterUses { get; set; }
-        public DateTime DateAdded { get; set; }
-    }
 }

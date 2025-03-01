@@ -20,6 +20,7 @@ public class ClothingItemsController : ControllerBase
 
     // GET: api/clothingitems
     // שליפת כל פריטי הלבוש
+    
     [HttpGet]
     public async Task<IActionResult> GetClothingItems()
     {
@@ -38,17 +39,23 @@ public class ClothingItemsController : ControllerBase
                 {
                     while (await reader.ReadAsync())
                     {
-                        items.Add(new ClothingItem
+                        var item = new ClothingItem
                         {
                             ItemID = reader.GetInt32("ItemID"),
-                            Category = reader.GetString("Category"),
-                            Season = reader.GetString("Season"),
-                            UsageType = reader.GetString("UsageType"),
-                            Color = reader.IsDBNull(reader.GetOrdinal("ColorName")) ? new ClassLibrary1.Models.Color() : new ClassLibrary1.Models.Color { ColorName = reader.GetString("ColorName") },
-                            ImageURL = reader.GetString("ImageURL"),
-                            WashAfterUses = reader.GetInt32("WashAfterUses"),
-                            DateAdded = reader.GetDateTime("DateAdded")
-                        });
+                            Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? string.Empty : reader.GetString("Category"),
+                            Season = reader.IsDBNull(reader.GetOrdinal("Season")) ? string.Empty : reader.GetString("Season"),
+                            UsageType = reader.IsDBNull(reader.GetOrdinal("UsageType")) ? string.Empty : reader.GetString("UsageType"),
+                            Color = reader.IsDBNull(reader.GetOrdinal("ColorName"))
+                                ? new ClassLibrary1.Models.Color()
+                                : new ClassLibrary1.Models.Color { ColorName = reader.GetString("ColorName") },
+                            ImageURL = reader.IsDBNull(reader.GetOrdinal("ImageURL")) ? string.Empty : reader.GetString("ImageURL"),
+                            WashAfterUses = reader.IsDBNull(reader.GetOrdinal("WashAfterUses")) ? 1 : reader.GetInt32("WashAfterUses"),
+                            DateAdded = reader.IsDBNull(reader.GetOrdinal("DateAdded")) ? (DateTime?)null : reader.GetDateTime("DateAdded"),
+                            LastWornDate = reader.IsDBNull(reader.GetOrdinal("LastWornDate")) ? (DateTime?)null : reader.GetDateTime("LastWornDate"),
+                            IsWashed = reader.IsDBNull(reader.GetOrdinal("IsWashed")) ? false : reader.GetInt32("IsWashed") == 1
+                        };
+
+                        items.Add(item);
                     }
                 }
             }
@@ -59,6 +66,7 @@ public class ClothingItemsController : ControllerBase
             return StatusCode(500, new { Message = "Error retrieving clothing items", Error = ex.Message });
         }
     }
+
 
     // POST: api/clothingitems
     // הוספת פריט לבוש חדש
@@ -73,8 +81,9 @@ public class ClothingItemsController : ControllerBase
             {
                 await connection.OpenAsync();
                 string query = @"
-                    INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageURL, DateAdded, WashAfterUses, LastWornDate, UsageType)
-                    VALUES (@UserID, @Category, @ColorID, @Season, @ImageURL, @DateAdded, @WashAfterUses, NULL, @UsageType)";
+                INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageURL, DateAdded, WashAfterUses, LastWornDate, UsageType, IsWashed)
+                VALUES (@UserID, @Category, @ColorID, @Season, @ImageURL, @DateAdded, @WashAfterUses, NULL, @UsageType, @IsWashed)";
+
                 using (var command = new MySqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@UserID", item.UserID);
@@ -85,6 +94,10 @@ public class ClothingItemsController : ControllerBase
                     command.Parameters.AddWithValue("@DateAdded", item.DateAdded);
                     command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
                     command.Parameters.AddWithValue("@UsageType", item.UsageType);
+
+                    // ✅ תיקון - המרת `true/false` ל-`0/1`
+                    command.Parameters.AddWithValue("@IsWashed", item.IsWashed ? 1 : 0);
+
                     await command.ExecuteNonQueryAsync();
                 }
             }
@@ -109,14 +122,16 @@ public class ClothingItemsController : ControllerBase
             {
                 await connection.OpenAsync();
                 string query = @"
-                    UPDATE clothingitems
-                    SET Category = @Category,
-                        Season = @Season,
-                        UsageType = @UsageType,
-                        ImageURL = @ImageURL,
-                        WashAfterUses = @WashAfterUses,
-                        DateAdded = @DateAdded
-                    WHERE ItemID = @ItemID";
+                UPDATE clothingitems
+                SET Category = @Category,
+                    Season = @Season,
+                    UsageType = @UsageType,
+                    ImageURL = @ImageURL,
+                    WashAfterUses = @WashAfterUses,
+                    DateAdded = @DateAdded,
+                    IsWashed = @IsWashed
+                WHERE ItemID = @ItemID";
+
                 using (var command = new MySqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Category", item.Category);
@@ -125,6 +140,7 @@ public class ClothingItemsController : ControllerBase
                     command.Parameters.AddWithValue("@ImageURL", item.ImageURL);
                     command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
                     command.Parameters.AddWithValue("@DateAdded", item.DateAdded);
+                    command.Parameters.AddWithValue("@IsWashed", item.IsWashed ? 1 : 0);
                     command.Parameters.AddWithValue("@ItemID", id);
 
                     int rowsAffected = await command.ExecuteNonQueryAsync();

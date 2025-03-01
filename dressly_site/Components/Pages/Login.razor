@@ -2,6 +2,8 @@
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime // נדרש לשמירת הנתונים ב-localStorage
+@using ClassLibrary1.Models
+
 
 <div class="d-flex min-vh-100 justify-content-center align-items-center bg-light">
     <div class="container" style="max-width: 400px;">
@@ -59,7 +61,7 @@
 </div>
 
 @code {
-    private LoginRequest loginRequest = new LoginRequest();
+    private User loginRequest = new User();
     private string Message;
 
     private async Task HandleValidSubmit()
@@ -114,10 +116,5 @@
         }
     }
 
-    public class LoginRequest
-    {
-        public string Username { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string PasswordHash { get; set; } = string.Empty;
-    }
+
 }

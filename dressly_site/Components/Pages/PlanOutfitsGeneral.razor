@@ -2,6 +2,8 @@
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@using ClassLibrary1.Models
+
 
 
 @using MySql.Data.MySqlClient
@@ -82,7 +84,7 @@
                             {
                                 ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
                                 Category = reader.GetString(reader.GetOrdinal("Category")),
-                                Color = reader.GetString(reader.GetOrdinal("Color")),
+                                ColorName = reader.GetString(reader.GetOrdinal("Color")),
                                 ImageURL = reader.GetString(reader.GetOrdinal("ImageURL"))
                             });
                     }
@@ -110,13 +112,7 @@
         public bool IsOutfitComplete { get; set; } = false;
     }
 
-    public class ClothingItem
-    {
-        public int ItemID { get; set; }
-        public string Category { get; set; }
-        public string Color { get; set; }
-        public string ImageURL { get; set; }
-    }
+    
 }
 
 <style>
