@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using MySql.Data.MySqlClient;
 using ClassLibrary1.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 
 namespace API
 {
@@ -14,6 +17,7 @@ namespace API
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // רישום שירותים
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<ILoginSession, LoginSession>();
@@ -22,14 +26,15 @@ namespace API
             // הוספת IConfiguration
             builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
-            // הגדרת CORS - מאפשר קריאות מ־Blazor
+            // הגדרת CORS - מאפשר קריאות מ־Blazor כולל credentials
             builder.Services.AddCors(options =>
             {
                 options.AddDefaultPolicy(policy =>
                 {
                     policy.WithOrigins("http://localhost:57864") // דומיין Blazor
                           .AllowAnyHeader()
-                          .AllowAnyMethod();
+                          .AllowAnyMethod()
+                          .AllowCredentials();
                 });
             });
 
@@ -49,6 +54,18 @@ namespace API
                 options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(context =>
                     IsUserRole(context.User.Identity?.Name, "Admin")));
             });
+
+            // הוספת Authentication עם Cookies והגדרת אפשרויות העוגייה לשיתוף בין פורטים
+            builder.Services.AddAuthentication("Cookies")
+                .AddCookie("Cookies", options =>
+                {
+                    options.LoginPath = "/login";
+                    options.AccessDeniedPath = "/access-denied";
+                    // עדכון הגדרות העוגייה לשיתוף בין אתרים (פורטים)
+                    options.Cookie.SameSite = SameSiteMode.None;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // בסביבת Production עדיף Always אם יש HTTPS
+                    options.Cookie.Domain = "localhost";
+                });
 
             // Swagger
             builder.Services.AddEndpointsApiExplorer();
@@ -74,6 +91,7 @@ namespace API
             // Middleware
             app.UseRouting();
             app.UseCors();
+            app.UseAuthentication(); // קריטי: Authentication לפני Authorization
             app.UseAuthorization();
 
             // מיפוי Controllers
@@ -88,7 +106,8 @@ namespace API
             if (string.IsNullOrEmpty(username))
                 return false;
 
-            string connectionString = "Server=localhost;Database=your_database;User=root;Password=your_password;";
+            // ודא שהחיבור כאן תואם למסד הנתונים שלך
+            string connectionString = "Server=localhost;Database=dressly;User=root;Password=Noya0532Zach;";
             using (var connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
@@ -97,7 +116,7 @@ namespace API
                 {
                     command.Parameters.AddWithValue("@Username", username);
                     var result = command.ExecuteScalar();
-                    return result != null && result.ToString() == role;
+                    return result != null && result.ToString().Equals(role, StringComparison.OrdinalIgnoreCase);
                 }
             }
         }

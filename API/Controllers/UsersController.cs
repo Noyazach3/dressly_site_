@@ -7,6 +7,9 @@ using ClassLibrary1.Models; // שימוש במחלקות מה-Class Library
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using System.Security.Claims;
 
 
 
@@ -25,7 +28,7 @@ public class UserController : ControllerBase
 
     // ------------------------------------------------------------------
     [HttpGet("ValidateLogin")]
-    public IActionResult ValidateLogin([FromQuery] string username, [FromQuery] string passwordHash)
+    public async Task<IActionResult> ValidateLogin([FromQuery] string username, [FromQuery] string passwordHash)
     {
         string connectionString = _config.GetConnectionString("DefaultConnection");
 
@@ -34,22 +37,45 @@ public class UserController : ControllerBase
             using (MySqlConnection conn = new MySqlConnection(connectionString))
             {
                 conn.Open();
-                string query = "SELECT PasswordHash FROM users WHERE Username = @Username";
+                string query = "SELECT PasswordHash, Role FROM users WHERE Username = @Username";
 
                 using (MySqlCommand cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Username", username);
-                    var storedHash = cmd.ExecuteScalar()?.ToString();
-
-                    if (storedHash == null)
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        return Unauthorized("Invalid username or password.");
+                        if (!reader.Read())
+                        {
+                            return Unauthorized("Invalid username or password.");
+                        }
+
+                        string storedHash = reader.GetString("PasswordHash");
+                        string role = reader.GetString("Role");
+
+                        if (!VerifyPassword(passwordHash, storedHash))
+                        {
+                            return Unauthorized("Invalid username or password.");
+                        }
+
+                        System.Console.WriteLine($"🔹 תפקיד שהתקבל מה-DB: {role}");
+
+                        // ✅ יצירת Claims עם ה-Role של המשתמש
+                        var claims = new List<Claim>
+                    {
+                        new Claim(ClaimTypes.Name, username),
+                        new Claim(ClaimTypes.Role, role)
+                    };
+
+                        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                        var principal = new ClaimsPrincipal(identity);
+
+                        // ✅ שמירת המשתמש ב-Session עם Authentication
+                        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+                        System.Console.WriteLine("✅ המשתמש התחבר בהצלחה! התפקיד שלו הוא: " + role);
+
+                        return Ok(true);
                     }
-
-                    // בדיקת התאמה בין הסיסמה שסופקה להאש השמור במסד הנתונים
-                    bool isPasswordValid = VerifyPassword(passwordHash, storedHash);
-
-                    return isPasswordValid ? Ok(true) : Unauthorized("Invalid username or password.");
                 }
             }
         }

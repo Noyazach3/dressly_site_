@@ -11,26 +11,27 @@ namespace dressly_site
 
             builder.Services.AddScoped<ClothingService>();
 
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ClassLibrary1.Services.ILoginSession, ClassLibrary1.Services.LoginSession>();
+
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
-            // הוספת LoginSession לשירותים
+            // הוספת LoginSession ושירותי מנהל
             builder.Services.AddScoped<IAdminService, AdminService>();
 
             builder.Services.AddHttpClient("API", client =>
             {
-                // הגדרת כתובת בסיס ל־HttpClient
+                // הגדרת כתובת בסיס ל־HttpClient (שמופעלת עבור ה־API)
                 client.BaseAddress = new Uri("http://localhost:5177/api/");
             });
 
-
-            // הוספת שירותי Controllers
+            // הוספת Controllers אם נדרש
             builder.Services.AddControllers();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Error");
@@ -38,14 +39,12 @@ namespace dressly_site
 
             app.UseStaticFiles();
 
-            // הוספת Middleware עבור Authorization
             app.UseRouting();
-            app.UseAuthentication(); // אם יש לך Authentication
-            app.UseAuthorization(); // קריטי להפעיל את המדיניות
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             app.UseAntiforgery();
 
-            // רישום נתיבים עבור API
             app.MapControllers();
 
             app.MapRazorComponents<App>()

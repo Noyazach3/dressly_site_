@@ -1,0 +1,68 @@
+﻿@page "/admin-dashboard"
+@inject NavigationManager NavigationManager
+@inject ClassLibrary1.Services.ILoginSession LoginSession
+
+@if (!LoginSession.Role.Equals("Admin"))
+{
+    <div class="alert alert-danger text-center" role="alert">
+        אינך רשאי לצפות בדף זה. תועבר לדף הבית בעוד @countdown שניות...
+        <p>🔹 התפקיד שלך: @LoginSession.Role</p>
+
+    </div>
+    <p>אם לא הועברת אוטומטית, <a href="/home">לחץ כאן</a></p>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center">
+        <h3>אזור ניהול</h3>
+        <p>🔹 התפקיד שלך: @LoginSession.Role</p>
+
+    </div>
+
+    <div class="card-group">
+        <div class="card" style="width: 200px;">
+            <img src="/images/admin-users.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול משתמשים">
+            <div class="card-body">
+                <h5 class="card-title">ניהול משתמשים</h5>
+                <p class="card-text">הוספה, מחיקה ושינוי הרשאות</p>
+                <NavLink class="btn btn-primary" href="/edit-users">ערוך משתמשים</NavLink>
+            </div>
+        </div>
+
+        <div class="card" style="width: 200px;">
+            <img src="/images/clothing.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול בגדים">
+            <div class="card-body">
+                <h5 class="card-title">ניהול בגדים</h5>
+                <p class="card-text">הוספה, מחיקה ועדכון בגדים</p>
+                <NavLink class="btn btn-primary" href="/manage-clothing">נהל בגדים</NavLink>
+            </div>
+        </div>
+
+        <div class="card" style="width: 200px;">
+            <img src="/images/stats.png" class="card-img-top" style="width: 50px; height: 50px;" alt="סטטיסטיקות">
+            <div class="card-body">
+                <h5 class="card-title">סטטיסטיקות</h5>
+                <p class="card-text">מעקב אחר שימוש בבגדים ושילובי לבוש</p>
+                <NavLink class="btn btn-primary" href="/clothing-stats">צפה בסטטיסטיקות</NavLink>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int countdown = 5;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!LoginSession.Role.Equals("Admin"))
+        {
+            while (countdown > 0)
+            {
+                await Task.Delay(1000);
+                countdown--;
+                StateHasChanged();
+            }
+            NavigationManager.NavigateTo("/home");
+        }
+    }
+}
