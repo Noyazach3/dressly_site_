@@ -11,34 +11,33 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
 
-
-
 [Route("api/[controller]")]
 [ApiController]
 public class UserController : ControllerBase
 {
     private readonly IConfiguration _config;
+    private readonly string _connectionString;
+
 
     public UserController(IConfiguration configuration)
     {
+
         _config = configuration;
+        _connectionString = _config.GetConnectionString("DefaultConnection");
+
+
     }
-
-
 
     // ------------------------------------------------------------------
     [HttpGet("ValidateLogin")]
     public async Task<IActionResult> ValidateLogin([FromQuery] string username, [FromQuery] string passwordHash)
     {
-        string connectionString = _config.GetConnectionString("DefaultConnection");
-
         try
         {
-            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            using (MySqlConnection conn = new MySqlConnection(_connectionString))
             {
                 conn.Open();
                 string query = "SELECT PasswordHash, Role FROM users WHERE Username = @Username";
-
                 using (MySqlCommand cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Username", username);
@@ -52,6 +51,16 @@ public class UserController : ControllerBase
                         string storedHash = reader.GetString("PasswordHash");
                         string role = reader.GetString("Role");
 
+                        // נוודא שהערך "admin" יהפוך ל-"Admin" (בכל צורה), אחרת נקבע "User"
+                        if (role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            role = "Admin";
+                        }
+                        else
+                        {
+                            role = "User";
+                        }
+
                         if (!VerifyPassword(passwordHash, storedHash))
                         {
                             return Unauthorized("Invalid username or password.");
@@ -59,17 +68,17 @@ public class UserController : ControllerBase
 
                         System.Console.WriteLine($"🔹 תפקיד שהתקבל מה-DB: {role}");
 
-                        // ✅ יצירת Claims עם ה-Role של המשתמש
+                        // יצירת Claims עם תפקיד המשתמש
                         var claims = new List<Claim>
-                    {
-                        new Claim(ClaimTypes.Name, username),
-                        new Claim(ClaimTypes.Role, role)
-                    };
+                            {
+                                new Claim(ClaimTypes.Name, username),
+                                new Claim(ClaimTypes.Role, role)
+                            };
 
                         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                         var principal = new ClaimsPrincipal(identity);
 
-                        // ✅ שמירת המשתמש ב-Session עם Authentication
+                        // ביצוע SignIn ליצירת Cookie האימות
                         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
                         System.Console.WriteLine("✅ המשתמש התחבר בהצלחה! התפקיד שלו הוא: " + role);
@@ -84,6 +93,7 @@ public class UserController : ControllerBase
             return StatusCode(500, new { Message = "An error occurred", Error = ex.Message });
         }
     }
+
     private bool VerifyPassword(string enteredPassword, string storedHash)
     {
         var parts = storedHash.Split(':');
@@ -106,9 +116,9 @@ public class UserController : ControllerBase
     }
 
 
-    // ------------------------------------------------------------------
-    // פעולה לרישום משתמש חדש (Register)
-    [HttpPost("Register")]
+// ------------------------------------------------------------------
+// פעולה לרישום משתמש חדש (Register)
+[HttpPost("Register")]
     public async Task<IActionResult> Register([FromBody] RegisterModel registerModel)
     {
         if (registerModel == null || string.IsNullOrWhiteSpace(registerModel.PasswordHash))
@@ -156,7 +166,6 @@ public class UserController : ControllerBase
             return StatusCode(500, new { Message = "An error occurred", Error = ex.Message });
         }
     }
-
 
     // ------------------------------------------------------------------
     // פעולה לקבלת תפקיד המשתמש

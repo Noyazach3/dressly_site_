@@ -1,21 +1,12 @@
 ﻿@page "/admin-dashboard"
 @inject NavigationManager NavigationManager
-@inject ClassLibrary1.Services.ILoginSession LoginSession
+@inject ClassLibrary1.Services.LoginSession LoginSession
 
-@if (!LoginSession.Role.Equals("Admin"))
-{
-    <div class="alert alert-danger text-center" role="alert">
-        אינך רשאי לצפות בדף זה. תועבר לדף הבית בעוד @countdown שניות...
-        <p>🔹 התפקיד שלך: @LoginSession.Role</p>
 
-    </div>
-    <p>אם לא הועברת אוטומטית, <a href="/home">לחץ כאן</a></p>
-}
-else
 {
     <div class="d-flex justify-content-between align-items-center">
         <h3>אזור ניהול</h3>
-        <p>🔹 התפקיד שלך: @LoginSession.Role</p>
+       
 
     </div>
 
@@ -50,19 +41,5 @@ else
 }
 
 @code {
-    private int countdown = 5;
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (!LoginSession.Role.Equals("Admin"))
-        {
-            while (countdown > 0)
-            {
-                await Task.Delay(1000);
-                countdown--;
-                StateHasChanged();
-            }
-            NavigationManager.NavigateTo("/home");
-        }
-    }
+   
 }

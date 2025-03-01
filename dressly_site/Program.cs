@@ -20,7 +20,7 @@ namespace dressly_site
             builder.Services.AddHttpContextAccessor();
 
             // הרשמת שירות LoginSession שמממש את ILoginSession
-            builder.Services.AddSingleton<ILoginSession, LoginSession>();
+            builder.Services.AddSingleton<LoginSession, LoginSession>();
 
             builder.Services.AddHttpClient("API", client =>
             {

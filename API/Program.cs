@@ -21,7 +21,7 @@ namespace API
             // רישום שירותים
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<IUserService, UserService>();
-            builder.Services.AddScoped<ILoginSession, LoginSession>();
+            builder.Services.AddScoped<LoginSession, LoginSession>();
             builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
             // הוספת IConfiguration

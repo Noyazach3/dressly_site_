@@ -3,39 +3,35 @@ using System.Security.Claims;
 
 namespace ClassLibrary1.Services
 {
-    public class LoginSession : ILoginSession
+    public class LoginSession
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        // ערכי ברירת מחדל עבור אורח
+        public string Username { get; private set; } = "Guest";
+        public string Email { get; private set; } = "guest@site.com";
+        public string Role { get; private set; } = "Guest";
 
-        public LoginSession(IHttpContextAccessor httpContextAccessor)
+        public void SetLoginDetails( string Username, string email, string role)
         {
-            _httpContextAccessor = httpContextAccessor;
+            Username = Username;
+            Email = email;
+            Role = role;
+        }
 
-            if (_httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false)
-            {
-                Console.WriteLine("🔹 המשתמש מחובר ✅");
-                foreach (var claim in _httpContextAccessor.HttpContext.User.Claims)
-                {
-                    Console.WriteLine($"🔹 Claim: {claim.Type} = {claim.Value}");
-                }
-            }
+        public void ClearSession()
+        {
+            if (Role == "Admin")
+                Role = "Admin";
             else
-            {
-                Console.WriteLine("❌ המשתמש **לא מחובר** או שאין לו `Claims`.");
-            }
+                Role = "Guest";
+
+            // חזרה לערכי ברירת מחדל של אורח
+            Username = "Guest";
+            Email = "guest@site.com";
+            
         }
 
-        public string Role
-        {
-            get
-            {
-                var role = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value ?? "User";
-                Console.WriteLine("🔹 תפקיד המשתמש: " + role);
-                return role;
-            }
-        }
-
-        public string UserId => _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        // פונקציה לבדוק אם המשתמש הוא אורח
+        
     }
 
 }
