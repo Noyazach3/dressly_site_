@@ -1,13 +1,5 @@
 ﻿using dressly_site2.Components;
-using API.Services;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System;
-using ClassLibrary1.Services;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using ClassLibrary1.Services; // לוודא שהממשק ILoginSession והמחלקה LoginSession קיימים ונגישים
 
 namespace dressly_site
 {
@@ -17,61 +9,47 @@ namespace dressly_site
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // ✅ הוספת שירותי Blazor Server ו-Razor Pages
+            builder.Services.AddScoped<ClothingService>();
+
+            // הוספת שירותי Blazor Server ו-Razor Pages
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
-            builder.Services.AddRazorPages();  // 📌 זה פותר את השגיאה
+            builder.Services.AddRazorPages();
 
-            // ✅ הוספת Authentication עם Cookies
-            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie(options =>
-                {
-                    options.LoginPath = "/login";
-                    options.AccessDeniedPath = "/access-denied";
-                });
+            // הרשמת IHttpContextAccessor הנדרש לשירות LoginSession
+            builder.Services.AddHttpContextAccessor();
 
-            // ✅ הוספת HttpClient לשימוש ב-API
-            builder.Services.AddScoped(sp =>
+            // הרשמת שירות LoginSession שמממש את ILoginSession
+            builder.Services.AddSingleton<ILoginSession, LoginSession>();
+
+            builder.Services.AddHttpClient("API", client =>
             {
-                var loginSession = sp.GetRequiredService<LoginSession>();
-                var httpClient = new HttpClient
-                {
-                    BaseAddress = new Uri("http://localhost:5177/api")
-                };
-                httpClient.DefaultRequestHeaders.Add("User-Role", loginSession.Role);
-                return httpClient;
+                // הגדרת כתובת בסיס ל־HttpClient
+                client.BaseAddress = new Uri("http://localhost:5177/api/");
             });
 
-            // ✅ הוספת שירותי Controllers עם ביטול Anti-Forgery
-            builder.Services.AddControllersWithViews(options =>
-            {
-                options.Filters.Add(new IgnoreAntiforgeryTokenAttribute());
-            });
+            // הוספת שירותי Controllers
+            builder.Services.AddControllers();
 
             var app = builder.Build();
 
-            // ✅ מצב דיבאג
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Error");
             }
 
-            // ✅ הפעלת Static Files
             app.UseStaticFiles();
 
-            // ✅ Middleware - לפי סדר נכון:
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
+
             app.UseAntiforgery();
 
-            // ✅ מיפוי הנתיבים:
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();  // API Controllers
-                endpoints.MapBlazorHub();   // Blazor Server
-                endpoints.MapFallbackToFile("index.html"); // 📌 תיקון השגיאה
-            });
+            app.MapControllers();
+
+            app.MapRazorComponents<App>()
+                .AddInteractiveServerRenderMode();
 
             app.Run();
         }
