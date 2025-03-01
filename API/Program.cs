@@ -8,6 +8,7 @@ using ClassLibrary1.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Antiforgery;
 
 namespace API
 {
@@ -49,10 +50,10 @@ namespace API
             builder.Services.AddAuthorization(options =>
             {
                 options.AddPolicy("UserOnly", policy => policy.RequireAssertion(context =>
-                    IsUserRole(context.User.Identity?.Name, "User")));
+                    IsUserRole(context.User.Identity?.Name, "User", builder.Configuration)));
 
                 options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(context =>
-                    IsUserRole(context.User.Identity?.Name, "Admin")));
+                    IsUserRole(context.User.Identity?.Name, "Admin", builder.Configuration)));
             });
 
             // הוספת Authentication עם Cookies והגדרת אפשרויות העוגייה לשיתוף בין פורטים
@@ -61,11 +62,14 @@ namespace API
                 {
                     options.LoginPath = "/login";
                     options.AccessDeniedPath = "/access-denied";
-                    // עדכון הגדרות העוגייה לשיתוף בין אתרים (פורטים)
+                    // הגדרות עוגייה לשיתוף בין אתרים (פורטים שונים)
                     options.Cookie.SameSite = SameSiteMode.None;
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // בסביבת Production עדיף Always אם יש HTTPS
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // בסביבת Production מומלץ Always עם HTTPS
                     options.Cookie.Domain = "localhost";
                 });
+
+            // הוספת שירותי Antiforgery
+            builder.Services.AddAntiforgery();
 
             // Swagger
             builder.Services.AddEndpointsApiExplorer();
@@ -94,20 +98,31 @@ namespace API
             app.UseAuthentication(); // קריטי: Authentication לפני Authorization
             app.UseAuthorization();
 
+            // Middleware לאימות Anti-Forgery – יש לשים אותו לאחר Authentication/Authorization ובטרם מיפוי הקונטרולרים
+            app.Use(async (context, next) =>
+            {
+                var endpoint = context.GetEndpoint();
+                if (endpoint != null && endpoint.Metadata.GetMetadata<ValidateAntiForgeryTokenAttribute>() != null)
+                {
+                    var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+                    await antiforgery.ValidateRequestAsync(context);
+                }
+                await next();
+            });
+
             // מיפוי Controllers
             app.MapControllers();
 
             app.Run();
         }
 
-        // פונקציה לבדיקה אם המשתמש בתפקיד מסוים (User או Admin)
-        private static bool IsUserRole(string username, string role)
+        // פונקציה לבדיקה אם המשתמש בתפקיד מסוים (User או Admin) – משתמשת במחרוזת החיבור מהקונפיגורציה
+        private static bool IsUserRole(string username, string role, IConfiguration configuration)
         {
             if (string.IsNullOrEmpty(username))
                 return false;
 
-            // ודא שהחיבור כאן תואם למסד הנתונים שלך
-            string connectionString = "Server=localhost;Database=dressly;User=root;Password=Noya0532Zach;";
+            string connectionString = configuration.GetConnectionString("DefaultConnection");
             using (var connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
