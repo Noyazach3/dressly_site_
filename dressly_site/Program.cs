@@ -1,12 +1,13 @@
 ﻿using dressly_site2.Components;
 using API.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using ClassLibrary1.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace dressly_site
 {
@@ -16,31 +17,12 @@ namespace dressly_site
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // רישום שירותים:
-            builder.Services.AddScoped<ClothingService>();
-            builder.Services.AddHttpContextAccessor();
-            builder.Services.AddScoped<ClassLibrary1.Services.ILoginSession, ClassLibrary1.Services.LoginSession>();
-
-            // הוספת שירותי Razor Components (Blazor Server)
+            // ✅ הוספת שירותי Blazor Server ו-Razor Pages
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
+            builder.Services.AddRazorPages();  // 📌 זה פותר את השגיאה
 
-            // הוספת שירותי מנהל
-            builder.Services.AddScoped<IAdminService, AdminService>();
-
-            // הגדרת HttpClient עבור קריאות ל־API
-            builder.Services.AddHttpClient("API", client =>
-            {
-                client.BaseAddress = new Uri("http://localhost:5177/api/");
-            });
-
-            // הוספת Controllers עם Views – הסרת הפילטר האוטומטי לאנטי‑פורג'רי
-            builder.Services.AddControllersWithViews(options =>
-            {
-                options.Filters.Remove(new AutoValidateAntiforgeryTokenAttribute());
-            });
-
-            // הגדרת Authentication עם Cookies
+            // ✅ הוספת Authentication עם Cookies
             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
@@ -48,39 +30,48 @@ namespace dressly_site
                     options.AccessDeniedPath = "/access-denied";
                 });
 
-            // הגדרת CORS – אם נדרש (במקרה של עבודה תחת אותו אוריג'ין אין צורך אמיתי)
-            builder.Services.AddCors(options =>
+            // ✅ הוספת HttpClient לשימוש ב-API
+            builder.Services.AddScoped(sp =>
             {
-                options.AddDefaultPolicy(policy =>
+                var loginSession = sp.GetRequiredService<LoginSession>();
+                var httpClient = new HttpClient
                 {
-                    policy.WithOrigins("http://localhost:57864")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
-                });
+                    BaseAddress = new Uri("http://localhost:5177/api")
+                };
+                httpClient.DefaultRequestHeaders.Add("User-Role", loginSession.Role);
+                return httpClient;
+            });
+
+            // ✅ הוספת שירותי Controllers עם ביטול Anti-Forgery
+            builder.Services.AddControllersWithViews(options =>
+            {
+                options.Filters.Add(new IgnoreAntiforgeryTokenAttribute());
             });
 
             var app = builder.Build();
 
+            // ✅ מצב דיבאג
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Error");
             }
 
+            // ✅ הפעלת Static Files
             app.UseStaticFiles();
 
-            // Middleware:
+            // ✅ Middleware - לפי סדר נכון:
             app.UseRouting();
-            app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseAntiforgery();
 
-            // אין כאן Middleware לאנטי‑פורג'רי – כך שאין Endpoint שמחייב אותו
-
-            // מיפוי הנתיבים:
-            app.MapControllers();
-            app.MapRazorComponents<App>()
-                .AddInteractiveServerRenderMode();
+            // ✅ מיפוי הנתיבים:
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();  // API Controllers
+                endpoints.MapBlazorHub();   // Blazor Server
+                endpoints.MapFallbackToFile("index.html"); // 📌 תיקון השגיאה
+            });
 
             app.Run();
         }
