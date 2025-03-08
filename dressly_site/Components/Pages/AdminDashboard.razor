@@ -1,45 +1,99 @@
 ﻿@page "/admin-dashboard"
 @inject NavigationManager NavigationManager
 @inject ClassLibrary1.Services.LoginSession LoginSession
+@inject HttpClient Http
 
-
+@if (string.IsNullOrEmpty(LoginSession.Role))
 {
+    <p>טוען נתוני משתמש...</p>
+}
+else if (!LoginSession.Role.Equals("Admin"))
+{
+    <p>Current Role: @LoginSession.Role</p>
+
+    <div class="alert alert-danger text-center" role="alert">
+        אינך רשאי לצפות בדף זה. תועבר לדף הבית בעוד @countdown שניות...
+    </div>
+}
+else
+{
+    <p>Current Role: @LoginSession.Role</p>
+
     <div class="d-flex justify-content-between align-items-center">
         <h3>אזור ניהול</h3>
-       
-
     </div>
 
-    <div class="card-group">
-        <div class="card" style="width: 200px;">
-            <img src="/images/admin-users.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול משתמשים">
-            <div class="card-body">
-                <h5 class="card-title">ניהול משתמשים</h5>
-                <p class="card-text">הוספה, מחיקה ושינוי הרשאות</p>
-                <NavLink class="btn btn-primary" href="/edit-users">ערוך משתמשים</NavLink>
+    
+        <div class="card-group">
+            <div class="card" style="width: 200px;">
+                <img src="/images/admin-users.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול משתמשים">
+                <div class="card-body">
+                    <h5 class="card-title">ניהול משתמשים</h5>
+                    <p class="card-text">הוספה, מחיקה ושינוי הרשאות</p>
+                    <button class="btn btn-primary" @onclick="NavigateToEditUsers">ערוך משתמשים</button>
+                </div>
             </div>
-        </div>
 
-        <div class="card" style="width: 200px;">
-            <img src="/images/clothing.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול בגדים">
-            <div class="card-body">
-                <h5 class="card-title">ניהול בגדים</h5>
-                <p class="card-text">הוספה, מחיקה ועדכון בגדים</p>
-                <NavLink class="btn btn-primary" href="/manage-clothing">נהל בגדים</NavLink>
+            <div class="card" style="width: 200px;">
+                <img src="/images/clothing.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול בגדים">
+                <div class="card-body">
+                    <h5 class="card-title">ניהול בגדים</h5>
+                    <p class="card-text">הוספה, מחיקה ועדכון בגדים</p>
+                    <button class="btn btn-primary" @onclick="NavigateToManageClothing">נהל בגדים</button>
+                </div>
             </div>
-        </div>
 
-        <div class="card" style="width: 200px;">
-            <img src="/images/stats.png" class="card-img-top" style="width: 50px; height: 50px;" alt="סטטיסטיקות">
-            <div class="card-body">
-                <h5 class="card-title">סטטיסטיקות</h5>
-                <p class="card-text">מעקב אחר שימוש בבגדים ושילובי לבוש</p>
-                <NavLink class="btn btn-primary" href="/clothing-stats">צפה בסטטיסטיקות</NavLink>
+            <div class="card" style="width: 200px;">
+                <img src="/images/stats.png" class="card-img-top" style="width: 50px; height: 50px;" alt="סטטיסטיקות">
+                <div class="card-body">
+                    <h5 class="card-title">סטטיסטיקות</h5>
+                    <p class="card-text">מעקב אחר שימוש בבגדים ושילובי לבוש</p>
+                    <button class="btn btn-primary" @onclick="NavigateToClothingStats">צפה בסטטיסטיקות</button>
+                </div>
             </div>
         </div>
-    </div>
+    
 }
 
 @code {
-   
+    private int countdown = 5; // ספירה לאחור מ-5 שניות
+
+    protected override async Task OnInitializedAsync()
+    {
+        // הדפסת התפקיד ל-Debug Console
+        Console.WriteLine($"🔹 LoginSession.Role בתחילת OnInitializedAsync(): {LoginSession.Role}");
+
+        // המתנה לטעינת נתוני המשתמש אם הם עדיין לא נטענו
+        int retries = 5;
+        while (string.IsNullOrEmpty(LoginSession.Role) && retries > 0)
+        {
+            Console.WriteLine("🔄 מחכה לטעינת נתוני המשתמש...");
+            await Task.Delay(1000);
+            retries--;
+        }
+
+        Console.WriteLine($"✅ נתוני המשתמש נטענו, Role = {LoginSession.Role}");
+
+        // אם עדיין אין תפקיד לאחר ההמתנה, המשתמש נחשב כלא מורשה
+        if (string.IsNullOrEmpty(LoginSession.Role) || !LoginSession.Role.Equals("Admin"))
+        {
+            Console.WriteLine("⛔️ המשתמש אינו מורשה, מעביר לדף הבית...");
+            NavigationManager.NavigateTo("/access-denied");
+        }
+    }
+
+    private void NavigateToEditUsers()
+    {
+        NavigationManager.NavigateTo("/edit-users");
+    }
+
+    private void NavigateToManageClothing()
+    {
+        NavigationManager.NavigateTo("/manage-clothing");
+    }
+
+    private void NavigateToClothingStats()
+    {
+        NavigationManager.NavigateTo("/clothing-stats");
+    }
 }

@@ -1,97 +1,77 @@
-﻿using BootstrapBlazor.Components;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using MySql.Data.MySqlClient;
 using System.Data;
-using ClassLibrary1.Models; // שימוש במחלקות מה-Class Library
-using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using ClassLibrary1.Models; // שימוש במודל הנכון
 using System.Security.Cryptography;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using ClassLibrary1.Models;
+using ClassLibrary1.Services;
+
+using Console = System.Console; // תיקון ההתנגשות עם BootstrapBlazor.Components.Console
 
 [Route("api/[controller]")]
 [ApiController]
-public class UserController : ControllerBase
+public class UsersController : ControllerBase
 {
     private readonly IConfiguration _config;
     private readonly string _connectionString;
+    private readonly LoginSession _loginSession;
 
-
-    public UserController(IConfiguration configuration)
+    public UsersController(IConfiguration configuration, LoginSession loginSession)
     {
-
         _config = configuration;
         _connectionString = _config.GetConnectionString("DefaultConnection");
-
-
+        _loginSession = loginSession; // שימוש באובייקט `LoginSession`
     }
 
     // ------------------------------------------------------------------
-    [HttpGet("ValidateLogin")]
-    public async Task<IActionResult> ValidateLogin([FromQuery] string username, [FromQuery] string passwordHash)
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] RegisterModel loginRequest)
     {
-        try
+        if (loginRequest == null || string.IsNullOrWhiteSpace(loginRequest.Email) || string.IsNullOrWhiteSpace(loginRequest.PasswordHash))
         {
-            using (MySqlConnection conn = new MySqlConnection(_connectionString))
+            return BadRequest("Email or password is missing.");
+        }
+
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var query = "SELECT * FROM Users WHERE Email = @Email";
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Email", loginRequest.Email);
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            var storedHash = reader.GetString("Password");
+            if (!VerifyPassword(loginRequest.PasswordHash, storedHash))
             {
-                conn.Open();
-                string query = "SELECT PasswordHash, Role FROM users WHERE Username = @Username";
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Username", username);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (!reader.Read())
-                        {
-                            return Unauthorized("Invalid username or password.");
-                        }
-
-                        string storedHash = reader.GetString("PasswordHash");
-                        string role = reader.GetString("Role");
-
-                        // נוודא שהערך "admin" יהפוך ל-"Admin" (בכל צורה), אחרת נקבע "User"
-                        if (role.Equals("admin", StringComparison.OrdinalIgnoreCase))
-                        {
-                            role = "Admin";
-                        }
-                        else
-                        {
-                            role = "User";
-                        }
-
-                        if (!VerifyPassword(passwordHash, storedHash))
-                        {
-                            return Unauthorized("Invalid username or password.");
-                        }
-
-                        System.Console.WriteLine($"🔹 תפקיד שהתקבל מה-DB: {role}");
-
-                        // יצירת Claims עם תפקיד המשתמש
-                        var claims = new List<Claim>
-                            {
-                                new Claim(ClaimTypes.Name, username),
-                                new Claim(ClaimTypes.Role, role)
-                            };
-
-                        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                        var principal = new ClaimsPrincipal(identity);
-
-                        // ביצוע SignIn ליצירת Cookie האימות
-                        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
-                        System.Console.WriteLine("✅ המשתמש התחבר בהצלחה! התפקיד שלו הוא: " + role);
-
-                        return Ok(true);
-                    }
-                }
+                return Unauthorized("Invalid email or password.");
             }
+
+            var userID = reader.GetInt32("UserID");
+            var username = reader.GetString("Username");
+            var email = reader.GetString("Email");
+            var role = reader.GetString("Role");
+
+            Console.WriteLine($"🔹 התחברות מוצלחת – Role שהתקבל מה-DB: {role}");
+
+            // 🔹 **עדכון `LoginSession` עם הנתונים מה-DB**
+            _loginSession.SetLoginDetails(userID, username, email, role);
+
+            Console.WriteLine($"✅ LoginSession.Role מעודכן ל- {_loginSession.Role}");
+
+            return Ok(new
+            {
+                Message = "Login successful",
+                UserID = userID,
+                Username = username,
+                Email = email,
+                Role = role
+            });
         }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Message = "An error occurred", Error = ex.Message });
-        }
+        return Unauthorized("Invalid email or password.");
     }
 
     private bool VerifyPassword(string enteredPassword, string storedHash)
@@ -115,10 +95,9 @@ public class UserController : ControllerBase
         return hashed == storedHashedPassword;
     }
 
-
-// ------------------------------------------------------------------
-// פעולה לרישום משתמש חדש (Register)
-[HttpPost("Register")]
+    // ------------------------------------------------------------------
+    // פעולה לרישום משתמש חדש (Register)
+    [HttpPost("Register")]
     public async Task<IActionResult> Register([FromBody] RegisterModel registerModel)
     {
         if (registerModel == null || string.IsNullOrWhiteSpace(registerModel.PasswordHash))
@@ -126,120 +105,48 @@ public class UserController : ControllerBase
             return BadRequest("Invalid registration data.");
         }
 
-        var PasswordHash = HashPassword(registerModel.PasswordHash); // כמו אצל המורה
+        var passwordHash = HashPassword(registerModel.PasswordHash); // כמו אצל המורה
 
-        string connectionString = _config.GetConnectionString("DefaultConnection");
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
 
-        try
+        // בדיקה אם המשתמש כבר קיים
+        var checkQuery = "SELECT COUNT(*) FROM Users WHERE Email = @Email";
+        using var checkCmd = new MySqlCommand(checkQuery, connection);
+        checkCmd.Parameters.AddWithValue("@Email", registerModel.Email);
+        int userCount = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+        if (userCount > 0)
         {
-            using (MySqlConnection conn = new MySqlConnection(connectionString))
-            {
-                await conn.OpenAsync();
-
-                // בדיקה אם המשתמש כבר קיים
-                string checkQuery = "SELECT COUNT(*) FROM users WHERE Email = @Email";
-                using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
-                {
-                    checkCmd.Parameters.AddWithValue("@Email", registerModel.Email);
-                    int userCount = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
-                    if (userCount > 0)
-                    {
-                        return BadRequest("User already exists");
-                    }
-                }
-
-                // הוספת המשתמש עם סיסמה מוצפנת
-                string insertQuery = "INSERT INTO users (Username, Email, PasswordHash) VALUES (@Username, @Email, @PasswordHash)";
-                using (MySqlCommand insertCmd = new MySqlCommand(insertQuery, conn))
-                {
-                    insertCmd.Parameters.AddWithValue("@Username", registerModel.Username);
-                    insertCmd.Parameters.AddWithValue("@Email", registerModel.Email);
-                    insertCmd.Parameters.AddWithValue("@PasswordHash", PasswordHash);
-                    await insertCmd.ExecuteNonQueryAsync();
-                }
-
-                return Ok("Registration successful.");
-            }
+            return BadRequest("User already exists");
         }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Message = "An error occurred", Error = ex.Message });
-        }
-    }
 
-    // ------------------------------------------------------------------
-    // פעולה לקבלת תפקיד המשתמש
-    [HttpGet("GetUserRole")]
-    public IActionResult GetUserRole([FromQuery] string username)
-    {
-        string connectionString = _config.GetConnectionString("DefaultConnection");
+        // הוספת המשתמש עם סיסמה מוצפנת
+        var insertQuery = "INSERT INTO Users (Username, Email, PasswordHash, Role) VALUES (@Username, @Email, @PasswordHash, @Role)";
+        using var insertCmd = new MySqlCommand(insertQuery, connection);
+        insertCmd.Parameters.AddWithValue("@Username", registerModel.Username);
+        insertCmd.Parameters.AddWithValue("@Email", registerModel.Email);
+        insertCmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        insertCmd.Parameters.AddWithValue("@Role", registerModel.Role);
+        await insertCmd.ExecuteNonQueryAsync();
 
-        try
-        {
-            using (MySqlConnection conn = new MySqlConnection(connectionString))
-            {
-                conn.Open();
-                string query = "SELECT Role FROM users WHERE Username = @Username";
-
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Username", username);
-                    var role = cmd.ExecuteScalar();
-                    return role != null ? Ok(role.ToString()) : NotFound("User not found");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Message = "An error occurred", Error = ex.Message });
-        }
+        return Ok("Registration successful.");
     }
 
     private string HashPassword(string password)
     {
-        // Create a random byte array for the salt.
         byte[] salt = new byte[128 / 8];
         using (var rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(salt);
         }
-        // Hash the password using PBKDF2 with the generated salt.
+
         string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
             password: password,
             salt: salt,
             prf: KeyDerivationPrf.HMACSHA256,
             iterationCount: 10000,
             numBytesRequested: 256 / 8));
-        // Combine the salt and hash for storage.
+
         return $"{Convert.ToBase64String(salt)}:{hashed}";
-    }
-
-    // ------------------------------------------------------------------
-    // פעולה למחיקת משתמש (Admin בלבד)
-    [HttpDelete("DeleteUser")]
-    [Authorize(Policy = "AdminOnly")]
-    public IActionResult DeleteUser([FromQuery] string username)
-    {
-        string connectionString = _config.GetConnectionString("DefaultConnection");
-
-        try
-        {
-            using (MySqlConnection conn = new MySqlConnection(connectionString))
-            {
-                conn.Open();
-                string query = "DELETE FROM users WHERE Username = @Username";
-
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Username", username);
-                    int rowsAffected = cmd.ExecuteNonQuery();
-                    return rowsAffected > 0 ? Ok("User deleted successfully") : NotFound("User not found");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Message = "An error occurred", Error = ex.Message });
-        }
     }
 }

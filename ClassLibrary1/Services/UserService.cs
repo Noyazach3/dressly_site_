@@ -20,21 +20,21 @@ namespace ClassLibrary1.Services
             return _configuration.GetConnectionString("DefaultConnection");
         }
 
-        public async Task<User> GetUserByIdAsync(int id)
+        public async Task<User> GetUserByIdAsync(int userID)
         {
             using var connection = new MySqlConnection(GetConnectionString());
             await connection.OpenAsync();
-            string query = "SELECT * FROM Users WHERE Id = @Id";
+            string query = "SELECT * FROM Users WHERE UserID = @UserID";
 
             using var command = new MySqlCommand(query, connection);
-            command.Parameters.AddWithValue("@Id", id);
+            command.Parameters.AddWithValue("@UserID", userID);
             using var reader = await command.ExecuteReaderAsync();
 
             if (await reader.ReadAsync())
             {
                 return new User
                 {
-                    UserID = reader.GetInt32("Id"),
+                    UserID = reader.GetInt32("UserID"),
                     Username = reader.GetString("Username"),
                     Email = reader.GetString("Email"),
                     Role = reader.GetString("Role")
@@ -57,7 +57,7 @@ namespace ClassLibrary1.Services
             {
                 return new User
                 {
-                    UserID = reader.GetInt32("Id"),
+                    UserID = reader.GetInt32("UserID"),
                     Username = reader.GetString("Username"),
                     Email = reader.GetString("Email"),
                     Role = reader.GetString("Role")

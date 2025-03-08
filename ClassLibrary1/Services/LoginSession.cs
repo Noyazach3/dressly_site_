@@ -1,37 +1,35 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
-
-namespace ClassLibrary1.Services
+﻿namespace ClassLibrary1.Services
 {
     public class LoginSession
     {
         // ערכי ברירת מחדל עבור אורח
+        public int UserID { get; private set; } = 0;  // התאמה לשיטה של המורה
         public string Username { get; private set; } = "Guest";
         public string Email { get; private set; } = "guest@site.com";
         public string Role { get; private set; } = "Guest";
 
-        public void SetLoginDetails( string Username, string email, string role)
+        // פונקציה לקביעת פרטי המשתמש המחובר
+        public void SetLoginDetails(int userId, string username, string email, string role)
         {
-            Username = Username;
-            Email = email;
-            Role = role;
+            this.UserID = userId;
+            this.Username = username;
+            this.Email = email;
+            this.Role = role;
         }
 
+        // פונקציה לניקוי ההתחברות
         public void ClearSession()
         {
-            if (Role == "Admin")
-                Role = "Admin";
-            else
-                Role = "Guest";
-
-            // חזרה לערכי ברירת מחדל של אורח
+            UserID = 0;
             Username = "Guest";
             Email = "guest@site.com";
-            
+            Role = "Guest"; // תמיד מאפס ל-Guest
         }
 
         // פונקציה לבדוק אם המשתמש הוא אורח
-        
+        public bool IsGuest()
+        {
+            return Role == "Guest";
+        }
     }
-
 }

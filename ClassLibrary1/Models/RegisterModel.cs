@@ -1,23 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ClassLibrary1.Models
+﻿namespace ClassLibrary1.Models
 {
     public class RegisterModel
     {
-        [Required(ErrorMessage = "שם פרטי נדרש")]
-        public string Username { get; set; }
-
-
-        [Required(ErrorMessage = "אימייל נדרש")]
-        [EmailAddress(ErrorMessage = "כתובת אימייל לא תקינה")]
-        public string Email { get; set; }
-
-        [Required(ErrorMessage = "סיסמה נדרשת")]
-        public string PasswordHash { get; set; }
+        public string Username { get; set; } = string.Empty; // אצלך במקום FirstName + LastName
+        public string Email { get; set; } = string.Empty;
+        public string PasswordHash { get; set; } = string.Empty;
+        public string Role { get; set; } = "User"; // ברירת מחדל – משתמש רגיל
     }
 }
