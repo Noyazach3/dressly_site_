@@ -8,6 +8,7 @@ using ClassLibrary1.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.OpenApi.Models; // 👈 הוספת שימוש ב-Swagger
 
 namespace API
 {
@@ -33,12 +34,27 @@ namespace API
             // הוספת שירותי Controllers
             builder.Services.AddControllers();
 
+            // 🔹 **תיקון – רישום Swagger בשירותים**
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "API Documentation",
+                    Version = "v1"
+                });
+            });
+
             // Middleware
             var app = builder.Build();
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API Documentation V1");
+                    c.RoutePrefix = "swagger"; // הוספת נתיב ישיר לדף ה-UI
+                });
             }
 
             app.UseRouting();

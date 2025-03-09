@@ -73,6 +73,8 @@ else
         }
 
         Console.WriteLine($"✅ נתוני המשתמש נטענו, Role = {LoginSession.Role}");
+        StateHasChanged();
+
 
         // אם עדיין אין תפקיד לאחר ההמתנה, המשתמש נחשב כלא מורשה
         if (string.IsNullOrEmpty(LoginSession.Role) || !LoginSession.Role.Equals("Admin"))
