@@ -37,14 +37,14 @@ public class UsersController : ControllerBase
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        var query = "SELECT * FROM Users WHERE Email = @Email";
+        var query = "SELECT UserID, Username, Email, PasswordHash, COALESCE(Role, 'User') AS Role FROM Users WHERE Email = @Email";
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Email", loginRequest.Email);
 
         using var reader = await command.ExecuteReaderAsync();
         if (await reader.ReadAsync())
         {
-            var storedHash = reader.GetString("Password");
+            var storedHash = reader.GetString("PasswordHash"); // ✅ תיקון שם השדה
             if (!VerifyPassword(loginRequest.PasswordHash, storedHash))
             {
                 return Unauthorized("Invalid email or password.");
@@ -53,7 +53,7 @@ public class UsersController : ControllerBase
             var userID = reader.GetInt32("UserID");
             var username = reader.GetString("Username");
             var email = reader.GetString("Email");
-            var role = reader.GetString("Role");
+            var role = reader.GetString("Role"); // ✅ שימוש ב-COALESCE כדי לוודא שתמיד יהיה Role
 
             Console.WriteLine($"🔹 התחברות מוצלחת – Role שהתקבל מה-DB: {role}");
 
@@ -71,6 +71,7 @@ public class UsersController : ControllerBase
                 Role = role
             });
         }
+
         return Unauthorized("Invalid email or password.");
     }
 
@@ -105,7 +106,7 @@ public class UsersController : ControllerBase
             return BadRequest("Invalid registration data.");
         }
 
-        var passwordHash = HashPassword(registerModel.PasswordHash); // כמו אצל המורה
+        var passwordHash = HashPassword(registerModel.PasswordHash); // הצפנת הסיסמה
 
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -120,17 +121,17 @@ public class UsersController : ControllerBase
             return BadRequest("User already exists");
         }
 
-        // הוספת המשתמש עם סיסמה מוצפנת
-        var insertQuery = "INSERT INTO Users (Username, Email, PasswordHash, Role) VALUES (@Username, @Email, @PasswordHash, @Role)";
+        // הכנסת המשתמש עם Role שמוגדר כברירת מחדל כ-"User"
+        var insertQuery = "INSERT INTO Users (Username, Email, PasswordHash, Role) VALUES (@Username, @Email, @PasswordHash, 'User')";
         using var insertCmd = new MySqlCommand(insertQuery, connection);
         insertCmd.Parameters.AddWithValue("@Username", registerModel.Username);
         insertCmd.Parameters.AddWithValue("@Email", registerModel.Email);
         insertCmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
-        insertCmd.Parameters.AddWithValue("@Role", registerModel.Role);
         await insertCmd.ExecuteNonQueryAsync();
 
         return Ok("Registration successful.");
     }
+
 
     private string HashPassword(string password)
     {

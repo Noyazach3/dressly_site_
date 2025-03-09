@@ -1,8 +1,11 @@
 ﻿@page "/login"
-@inject IHttpClientFactory ClientFactory
+@inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime // נדרש לשמירת הנתונים ב-localStorage
 @using ClassLibrary1.Models
+@using ClassLibrary1.Services
+@inject LoginSession LoginSession
+
 
 
 <div class="d-flex min-vh-100 justify-content-center align-items-center bg-light">
@@ -64,42 +67,23 @@
     private User loginRequest = new User();
     private string Message;
 
+
     private async Task HandleValidSubmit()
     {
         try
         {
-            // יצירת לקוח HTTP באמצעות IHttpClientFactory עם שם "API"
-            var client = ClientFactory.CreateClient("API");
 
-            // בניית ה-URI עם כל הפרמטרים
-            var url = $"User/ValidateLogin?username={Uri.EscapeDataString(loginRequest.Username)}" +
-                      $"&email={Uri.EscapeDataString(loginRequest.Email)}" +
-                      $"&passwordHash={Uri.EscapeDataString(loginRequest.PasswordHash)}";
-
-            var response = await client.GetAsync(url);
+            var response = await Http.PostAsJsonAsync("api/Users/Login", loginRequest);
             if (response.IsSuccessStatusCode)
             {
-                var isValid = await response.Content.ReadFromJsonAsync<bool>();
-                if (isValid)
+                var user = await response.Content.ReadFromJsonAsync<UserInfoModel>();
+                if (user != null)
                 {
-                    // קבלת תפקיד המשתמש
-                    var roleResponse = await client.GetAsync($"User/GetUserRole?username={Uri.EscapeDataString(loginRequest.Username)}");
-                    var userRole = await roleResponse.Content.ReadAsStringAsync();
-
-                    // שמירת הנתונים ב-localStorage
-                    await JSRuntime.InvokeVoidAsync("localStorage.setItem", "username", loginRequest.Username);
-                    await JSRuntime.InvokeVoidAsync("localStorage.setItem", "role", userRole);
-
-                    // ניווט בהתאם לתפקיד המשתמש
-                    if (userRole == "Admin")
-                    {
-                        Navigation.NavigateTo("/admin-dashboard");
-                    }
-                    else
-                    {
-                        Navigation.NavigateTo("/home");
-                    }
+                    LoginSession.SetLoginDetails(user.UserID, user.Username, user.Email, user.Role);
+                    Navigation.NavigateTo(user.Role == "Admin" ? "/admin-dashboard" : "/home");
                 }
+            
+
                 else
                 {
                     Message = "שם משתמש או סיסמה שגויים.";
@@ -115,6 +99,5 @@
             Message = $"שגיאה: {ex.Message}";
         }
     }
-
 
 }

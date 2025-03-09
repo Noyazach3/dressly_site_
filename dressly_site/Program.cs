@@ -20,12 +20,18 @@ namespace dressly_site
             builder.Services.AddHttpContextAccessor();
 
             // הרשמת שירות LoginSession שמממש את ILoginSession
-            builder.Services.AddSingleton<LoginSession, LoginSession>();
+            builder.Services.AddSingleton<LoginSession>();
 
-            builder.Services.AddHttpClient("API", client =>
+            builder.Services.AddScoped(sp =>
             {
-                // הגדרת כתובת בסיס ל־HttpClient
-                client.BaseAddress = new Uri("http://localhost:5177/api/");
+                var loginSession = sp.GetRequiredService<LoginSession>();
+                var httpClient = new HttpClient
+                {
+                    BaseAddress = new Uri("http://localhost:5177/")
+                };
+                // הוספת הכותרת "User-Role" לכל בקשה
+                httpClient.DefaultRequestHeaders.Add("User-Role", loginSession.Role);
+                return httpClient;
             });
 
             // הוספת שירותי Controllers

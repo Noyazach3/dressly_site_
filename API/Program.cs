@@ -29,7 +29,8 @@ namespace API
 
             // 🔹 **תיקון: חיבור למסד הנתונים MySQL כ-Scoped במקום Singleton**
             builder.Services.AddScoped<MySqlConnection>(_ =>
-                new MySqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
+                 new MySqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 
             // הוספת שירותי Controllers
             builder.Services.AddControllers();
