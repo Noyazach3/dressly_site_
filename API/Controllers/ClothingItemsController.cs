@@ -20,7 +20,6 @@ public class ClothingItemsController : ControllerBase
 
     // GET: api/clothingitems
     // שליפת כל פריטי הלבוש
-    
     [HttpGet]
     public async Task<IActionResult> GetClothingItems()
     {
@@ -48,7 +47,7 @@ public class ClothingItemsController : ControllerBase
                             Color = reader.IsDBNull(reader.GetOrdinal("ColorName"))
                                 ? new ClassLibrary1.Models.Color()
                                 : new ClassLibrary1.Models.Color { ColorName = reader.GetString("ColorName") },
-                            ImageURL = reader.IsDBNull(reader.GetOrdinal("ImageURL")) ? string.Empty : reader.GetString("ImageURL"),
+                            ImageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader["ImageData"],
                             WashAfterUses = reader.IsDBNull(reader.GetOrdinal("WashAfterUses")) ? 1 : reader.GetInt32("WashAfterUses"),
                             DateAdded = reader.IsDBNull(reader.GetOrdinal("DateAdded")) ? (DateTime?)null : reader.GetDateTime("DateAdded"),
                             LastWornDate = reader.IsDBNull(reader.GetOrdinal("LastWornDate")) ? (DateTime?)null : reader.GetDateTime("LastWornDate"),
@@ -70,33 +69,43 @@ public class ClothingItemsController : ControllerBase
 
     // POST: api/clothingitems
     // הוספת פריט לבוש חדש
-    [HttpPost]
-    public async Task<IActionResult> AddClothingItem([FromBody] ClothingItem item)
+    [HttpPost("add")]
+    public async Task<IActionResult> AddClothingItem([FromForm] int UserID, [FromForm] string Category, [FromForm] int ColorID,
+                                                    [FromForm] string Season, [FromForm] IFormFile Image, [FromForm] int WashAfterUses,
+                                                    [FromForm] string UsageType, [FromForm] bool IsWashed)
     {
         string connectionString = _configuration.GetConnectionString("DefaultConnection");
 
         try
         {
+            byte[] imageData = null;
+            if (Image != null)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    await Image.CopyToAsync(ms);
+                    imageData = ms.ToArray();
+                }
+            }
+
             using (var connection = new MySqlConnection(connectionString))
             {
                 await connection.OpenAsync();
                 string query = @"
-                INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageURL, DateAdded, WashAfterUses, LastWornDate, UsageType, IsWashed)
-                VALUES (@UserID, @Category, @ColorID, @Season, @ImageURL, @DateAdded, @WashAfterUses, NULL, @UsageType, @IsWashed)";
+                INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageData, DateAdded, WashAfterUses, UsageType, IsWashed)
+                VALUES (@UserID, @Category, @ColorID, @Season, @ImageData, @DateAdded, @WashAfterUses, @UsageType, @IsWashed)";
 
                 using (var command = new MySqlCommand(query, connection))
                 {
-                    command.Parameters.AddWithValue("@UserID", item.UserID);
-                    command.Parameters.AddWithValue("@Category", item.Category);
-                    command.Parameters.AddWithValue("@ColorID", item.ColorID);
-                    command.Parameters.AddWithValue("@Season", item.Season);
-                    command.Parameters.AddWithValue("@ImageURL", item.ImageURL);
-                    command.Parameters.AddWithValue("@DateAdded", item.DateAdded);
-                    command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
-                    command.Parameters.AddWithValue("@UsageType", item.UsageType);
-
-                    // ✅ תיקון - המרת `true/false` ל-`0/1`
-                    command.Parameters.AddWithValue("@IsWashed", item.IsWashed ? 1 : 0);
+                    command.Parameters.AddWithValue("@UserID", UserID);
+                    command.Parameters.AddWithValue("@Category", Category);
+                    command.Parameters.AddWithValue("@ColorID", ColorID);
+                    command.Parameters.AddWithValue("@Season", Season);
+                    command.Parameters.AddWithValue("@ImageData", imageData);
+                    command.Parameters.AddWithValue("@DateAdded", DateTime.UtcNow);
+                    command.Parameters.AddWithValue("@WashAfterUses", WashAfterUses);
+                    command.Parameters.AddWithValue("@UsageType", UsageType);
+                    command.Parameters.AddWithValue("@IsWashed", IsWashed ? 1 : 0);
 
                     await command.ExecuteNonQueryAsync();
                 }
@@ -108,6 +117,37 @@ public class ClothingItemsController : ControllerBase
             return StatusCode(500, new { Message = "Error adding clothing item", Error = ex.Message });
         }
     }
+
+    [HttpGet("get-image/{itemId}")]
+    public async Task<IActionResult> GetImage(int itemId)
+    {
+        string connectionString = _configuration.GetConnectionString("DefaultConnection");
+        byte[] imageData = null;
+
+        using (var connection = new MySqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+            string query = "SELECT ImageData FROM clothingitems WHERE ItemID = @ItemID";
+
+            using (var command = new MySqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@ItemID", itemId);
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        imageData = reader["ImageData"] as byte[];
+                    }
+                }
+            }
+        }
+
+        if (imageData == null || imageData.Length == 0)
+            return NotFound("Image not found.");
+
+        return File(imageData, "image/jpeg"); // מחזיר את התמונה בפורמט מתאים
+    }
+
 
     // PUT: api/clothingitems/{id}
     // עדכון פריט לבוש קיים
@@ -137,7 +177,7 @@ public class ClothingItemsController : ControllerBase
                     command.Parameters.AddWithValue("@Category", item.Category);
                     command.Parameters.AddWithValue("@Season", item.Season);
                     command.Parameters.AddWithValue("@UsageType", item.UsageType);
-                    command.Parameters.AddWithValue("@ImageURL", item.ImageURL);
+                    command.Parameters.AddWithValue("@ImageURL", item.ImageData);
                     command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
                     command.Parameters.AddWithValue("@DateAdded", item.DateAdded);
                     command.Parameters.AddWithValue("@IsWashed", item.IsWashed ? 1 : 0);

@@ -1,0 +1,76 @@
+﻿@page "/clothing-stats"
+@inject HttpClient Http
+
+<style>
+    body {
+        background-color: #FAF3F0; /* רקע שמנתי */
+        font-family: 'Arial', sans-serif;
+    }
+
+    .stats-container {
+        width: 60%;
+        margin: auto;
+        text-align: center;
+        padding: 20px;
+        background-color: #FFFFFF;
+        border-radius: 15px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress {
+        height: 20px;
+        border-radius: 10px;
+    }
+
+    .progress-bar {
+        background-color: #F28D9E; /* ורוד פסטלי */
+        font-weight: bold;
+    }
+</style>
+
+<div class="stats-container">
+    <h3 class="fw-bold text-dark">📊 סטטיסטיקות בגדים</h3>
+
+    @if (clothingStats == null)
+    {
+        <p class="text-muted">🔄 טוען נתונים...</p>
+    }
+    else
+    {
+        <p class="fw-semibold fs-5">👕 סה"כ בגדים בארון: <span class="badge bg-primary">@clothingStats.TotalClothingItems</span></p>
+
+        <h4 class="mt-4">📌 קטגוריות פופולריות:</h4>
+
+        @foreach (var category in clothingStats.PopularCategories)
+        {
+            int percentage = (int)((double)category.Count / clothingStats.TotalClothingItems * 100);
+            <div class="mb-2">
+                <p class="mb-1 fw-bold">@category.Category - @category.Count פריטים</p>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: @percentage%;" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">@percentage%</div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private ClothingStatsResponse clothingStats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        clothingStats = await Http.GetFromJsonAsync<ClothingStatsResponse>("api/Clothing/stats");
+    }
+
+    private class ClothingStatsResponse
+    {
+        public int TotalClothingItems { get; set; }
+        public List<CategoryCount> PopularCategories { get; set; }
+    }
+
+    private class CategoryCount
+    {
+        public string Category { get; set; }
+        public int Count { get; set; }
+    }
+}

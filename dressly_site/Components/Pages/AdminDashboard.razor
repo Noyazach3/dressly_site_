@@ -2,59 +2,124 @@
 @inject NavigationManager NavigationManager
 @inject ClassLibrary1.Services.LoginSession LoginSession
 @inject HttpClient Http
-@using  ClassLibrary1.Services
+@using ClassLibrary1.Services
 
+<style>
+    body {
+        background-color: #FAF3F0; /* רקע שמנתי */
+        font-family: 'Arial', sans-serif;
+    }
+
+    .admin-header {
+        color: #333;
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 30px;
+    }
+
+    .alert-danger {
+        background-color: #F8E1E7;
+        color: #A94442;
+        border: none;
+        padding: 15px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+
+    .card-container {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .card {
+        width: 250px;
+        background-color: #FFFFFF;
+        border-radius: 15px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease-in-out;
+        text-align: center;
+        padding: 15px;
+    }
+
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        .card img {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 10px;
+        }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .card-text {
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 10px;
+    }
+
+    .btn-custom {
+        background-color: #F28D9E; /* ורוד פסטלי */
+        color: white;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+
+        .btn-custom:hover {
+            background-color: #D46A7E;
+        }
+</style>
+
+<h3 class="admin-header">🔧 לוח ניהול</h3>
 
 @if (string.IsNullOrEmpty(LoginSession.Role))
 {
-    <p>טוען נתוני משתמש...</p>
+    <p class="text-center text-muted">🔄 טוען נתוני משתמש...</p>
 }
 else if (!LoginSession.Role.Equals("Admin"))
 {
-    <p>Current Role: @LoginSession.Role</p>
+    <p class="text-center fw-bold">Current Role: @LoginSession.Role</p>
 
     <div class="alert alert-danger text-center" role="alert">
-        אינך רשאי לצפות בדף זה. תועבר לדף הבית בעוד @countdown שניות...
+        ⛔ אינך רשאי לצפות בדף זה. תועבר לדף הבית בעוד @countdown שניות...
     </div>
 }
 else
 {
-    <p>Current Role: @LoginSession.Role</p>
+    <p class="text-center fw-bold">Current Role: @LoginSession.Role</p>
 
-    <div class="d-flex justify-content-between align-items-center">
-        <h3>אזור ניהול</h3>
-    </div>
-
-    
-        <div class="card-group">
-            <div class="card" style="width: 200px;">
-                <img src="/images/admin-users.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול משתמשים">
-                <div class="card-body">
-                    <h5 class="card-title">ניהול משתמשים</h5>
-                    <p class="card-text">הוספה, מחיקה ושינוי הרשאות</p>
-                    <button class="btn btn-primary" @onclick="NavigateToEditUsers">ערוך משתמשים</button>
-                </div>
-            </div>
-
-            <div class="card" style="width: 200px;">
-                <img src="/images/clothing.png" class="card-img-top" style="width: 50px; height: 50px;" alt="ניהול בגדים">
-                <div class="card-body">
-                    <h5 class="card-title">ניהול בגדים</h5>
-                    <p class="card-text">הוספה, מחיקה ועדכון בגדים</p>
-                    <button class="btn btn-primary" @onclick="NavigateToManageClothing">נהל בגדים</button>
-                </div>
-            </div>
-
-            <div class="card" style="width: 200px;">
-                <img src="/images/stats.png" class="card-img-top" style="width: 50px; height: 50px;" alt="סטטיסטיקות">
-                <div class="card-body">
-                    <h5 class="card-title">סטטיסטיקות</h5>
-                    <p class="card-text">מעקב אחר שימוש בבגדים ושילובי לבוש</p>
-                    <button class="btn btn-primary" @onclick="NavigateToClothingStats">צפה בסטטיסטיקות</button>
-                </div>
-            </div>
+    <div class="card-container">
+        <div class="card">
+            <img src="/images/admin-users.png" alt="ניהול משתמשים">
+            <h5 class="card-title">ניהול משתמשים</h5>
+            <p class="card-text">הוספה, מחיקה ושינוי הרשאות</p>
+            <button class="btn-custom" @onclick="NavigateToEditUsers">ערוך משתמשים</button>
         </div>
-    
+
+        <div class="card">
+            <img src="/images/clothing.png" alt="ניהול בגדים">
+            <h5 class="card-title">ניהול בגדים</h5>
+            <p class="card-text">הוספה, מחיקה ועדכון בגדים</p>
+            <button class="btn-custom" @onclick="NavigateToManageClothing">נהל בגדים</button>
+        </div>
+
+        <div class="card">
+            <img src="/images/stats.png" alt="סטטיסטיקות">
+            <h5 class="card-title">סטטיסטיקות</h5>
+            <p class="card-text">מעקב אחר שימוש בבגדים ושילובי לבוש</p>
+            <button class="btn-custom" @onclick="NavigateToClothingStats">צפה בסטטיסטיקות</button>
+        </div>
+    </div>
 }
 
 @code {
@@ -76,7 +141,6 @@ else
 
         Console.WriteLine($"✅ נתוני המשתמש נטענו, Role = {LoginSession.Role}");
         StateHasChanged();
-
 
         // אם עדיין אין תפקיד לאחר ההמתנה, המשתמש נחשב כלא מורשה
         if (string.IsNullOrEmpty(LoginSession.Role) || !LoginSession.Role.Equals("Admin"))

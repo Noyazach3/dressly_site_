@@ -22,7 +22,7 @@ namespace API
             builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<LoginSession, LoginSession>();
-            builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
             // הוספת IConfiguration
             builder.Services.AddSingleton<IConfiguration>(builder.Configuration);

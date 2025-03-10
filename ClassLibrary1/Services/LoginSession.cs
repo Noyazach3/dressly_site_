@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace ClassLibrary1.Services
 {
-    public class LoginSession
+    public class LoginSession 
     {
         // ערכי ברירת מחדל עבור אורח
         public int UserID { get; private set; } = 0;

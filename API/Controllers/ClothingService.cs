@@ -63,7 +63,7 @@ public class ClothingService
                             Category = reader.GetString("Category"),
                             ColorID = reader.GetInt32("ColorID"),
                             Season = reader.GetString("Season"),
-                            ImageURL = reader.GetString("ImageURL"),
+                            ImageURL= reader.GetString("ImageURL"),
                             DateAdded = reader.IsDBNull("DateAdded") ? (DateTime?)null : reader.GetDateTime("DateAdded"),
                             LastWornDate = reader.IsDBNull("LastWornDate") ? (DateTime?)null : reader.GetDateTime("LastWornDate"),
                             WashAfterUses = reader.GetInt32("WashAfterUses"),
@@ -98,7 +98,7 @@ public class ClothingService
                 command.Parameters.AddWithValue("@Category", item.Category);
                 command.Parameters.AddWithValue("@ColorID", item.ColorID);
                 command.Parameters.AddWithValue("@Season", item.Season);
-                command.Parameters.AddWithValue("@ImageURL", item.ImageURL);
+                command.Parameters.AddWithValue("@ImageURL", item.ImageData);
                 command.Parameters.AddWithValue("@DateAdded", item.DateAdded ?? DateTime.Now);
                 command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
 

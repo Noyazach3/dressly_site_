@@ -25,7 +25,7 @@
                         @foreach (var item in clothingItems.Where(i => i.Category == category))
                         {
                             <div class="item-card" @onclick="() => SelectItem(item)">
-                                <img src="@item.ImageURL" alt="@item.Category" class="item-image" />
+                                <img src="@item.ImageData " alt="@item.Category" class="item-image" />
                                 <div class="item-details">
                                     <p>@item.Category - @item.Color</p>
                                 </div>
@@ -85,7 +85,7 @@
                                 ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
                                 Category = reader.GetString(reader.GetOrdinal("Category")),
                                 ColorName = reader.GetString(reader.GetOrdinal("Color")),
-                                ImageURL = reader.GetString(reader.GetOrdinal("ImageURL"))
+                                ImageData = reader.GetString(reader.GetOrdinal("ImageURL"))
                             });
                     }
                     clothingItems = items;

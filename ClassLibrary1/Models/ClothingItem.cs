@@ -13,7 +13,7 @@ namespace ClassLibrary1.Models
         public string Category { get; set; }
         public int ColorID { get; set; } // מזהה הצבע
         public string Season { get; set; }
-        public string ImageURL { get; set; }
+        public byte[] ImageData { get; set; } // שדה לתמונה בפורמט BLOB
         public DateTime? DateAdded { get; set; }
         public DateTime? LastWornDate { get; set; }
         public int WashAfterUses { get; set; } = 1;

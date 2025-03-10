@@ -1,0 +1,134 @@
+﻿@page "/manage-clothing"
+@inject HttpClient Http
+@using ClassLibrary1.Models
+
+<style>
+    body {
+        background-color: #FAF3F0; /* רקע שמנתי */
+        font-family: 'Arial', sans-serif;
+    }
+
+    .table-container {
+        width: 80%;
+        margin: auto;
+        background-color: #FFFFFF;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table th {
+        background-color: #F8E1E7; /* ורוד פסטלי */
+        color: #333;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .table td {
+        padding: 12px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .table img {
+        width: 60px;
+        height: 60px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 2px solid #F28D9E; /* ורוד עדין */
+    }
+
+    .btn-delete {
+        background-color: #F28D9E; /* ורוד פסטלי */
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: none;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+
+    .btn-delete:hover {
+        background-color: #D46A7E;
+    }
+
+    .badge-color {
+        padding: 6px 10px;
+        border-radius: 15px;
+        font-weight: bold;
+        background-color: #D4A5A5; /* ורוד רך */
+        color: white;
+    }
+</style>
+
+<h3 class="text-center fw-bold my-4">👕 ניהול בגדים</h3>
+
+@if (clothingItems == null)
+{
+    <p class="text-center text-muted">🔄 טוען פרטי לבוש...</p>
+}
+else if (!clothingItems.Any())
+{
+    <p class="text-center text-danger fw-semibold">❌ אין פרטי לבוש להצגה</p>
+}
+else
+{
+    <div class="table-container">
+        <table class="table table-hover table-striped text-center align-middle">
+            <thead>
+                <tr>
+                    <th>קטגוריה</th>
+                    <th>צבע</th>
+                    <th>עונה</th>
+                    <th>תמונה</th>
+                    <th>🗑 מחיקה</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in clothingItems)
+                {
+                    <tr>
+                        <td>@item.Category</td>
+                        <td><span class="badge badge-color">@item.ColorID</span></td>
+                        <td>@item.Season</td>
+                        <td><img src="@item.ImageData " alt="תמונה"></td>
+                        <td>
+                            <button class="btn-delete" @onclick="() => DeleteClothingItem(item.ItemID)">🗑 מחק</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<ClothingItem> clothingItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        clothingItems = await Http.GetFromJsonAsync<List<ClothingItem>>("api/Clothing/user/1"); // שנה ל-ID אמיתי
+    }
+
+    private async Task DeleteClothingItem(int itemId)
+    {
+        var response = await Http.DeleteAsync($"api/Clothing/{itemId}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            clothingItems.RemoveAll(c => c.ItemID == itemId);
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine($"❌ שגיאה במחיקת פריט: {await response.Content.ReadAsStringAsync()}");
+        }
+    }
+}

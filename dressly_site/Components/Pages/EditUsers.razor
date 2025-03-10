@@ -1,0 +1,188 @@
+﻿@page "/edit-users"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using ClassLibrary1.Models
+
+<style>
+    body {
+        background-color: #FAF3F0; /* רקע שמנתי */
+        font-family: 'Arial', sans-serif;
+    }
+
+    h3 {
+        color: #333; /* שחור רך */
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .search-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    .search-box {
+        width: 50%;
+        border-radius: 8px;
+        border: 1px solid #EFC8D5; /* ורוד פסטלי */
+        padding: 10px;
+        font-size: 16px;
+    }
+
+    .table-container {
+        width: 80%;
+        margin: auto;
+        background-color: #FFFFFF;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        background-color: #F8E1E7; /* ורוד פסטלי */
+        color: #333;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .table td {
+        padding: 12px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .badge {
+        padding: 5px 10px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+
+    .badge-admin {
+        background-color: #F28D9E; /* ורוד עז */
+        color: white;
+    }
+
+    .badge-user {
+        background-color: #D4A5A5; /* ורוד עדין */
+        color: white;
+    }
+
+    .btn-delete {
+        background-color: #E74C3C;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: none;
+        transition: 0.3s;
+    }
+
+    .btn-delete:hover {
+        background-color: #C0392B;
+    }
+</style>
+
+<h3>🔧 ניהול משתמשים</h3>
+
+<!-- תיבת חיפוש -->
+<div class="search-container">
+    <input type="text" class="search-box" placeholder="🔎 חפש משתמש..." @bind="searchQuery" @oninput="FilterUsers">
+</div>
+
+<!-- הצגת כמות המשתמשים -->
+<p class="text-center fw-semibold">👥 סה"כ משתמשים שאינם מנהלים: <span class="badge badge-user">@nonAdminCount</span></p>
+
+@if (filteredUsers == null)
+{
+    <p class="text-center text-muted">🔄 טוען משתמשים...</p>
+}
+else if (!filteredUsers.Any())
+{
+    <p class="text-center text-danger fw-semibold">❌ לא נמצאו משתמשים התואמים לחיפוש</p>
+}
+else
+{
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>👤 שם משתמש</th>
+                    <th>📧 אימייל</th>
+                    <th>🏷 תפקיד</th>
+                    <th>🗑 מחיקה</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in filteredUsers)
+                {
+                    <tr>
+                        <td>@user.Username</td>
+                        <td>@user.Email</td>
+                        <td>
+                            <span class="badge @(user.Role == "Admin" ? "badge-admin" : "badge-user")">@user.Role</span>
+                        </td>
+                        <td>
+                            @if (user.Role != "Admin")
+                            {
+                                <button class="btn-delete" @onclick="() => ConfirmDelete(user.UserID)">🗑 מחק</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<UserInfoModel> users = new();
+    private List<UserInfoModel> filteredUsers = new();
+    private int nonAdminCount;
+    private string searchQuery = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        nonAdminCount = (await Http.GetFromJsonAsync<Dictionary<string, int>>("api/Admin/non-admin-count"))["nonAdminUsersCount"];
+        users = await Http.GetFromJsonAsync<List<UserInfoModel>>("api/Admin/GetAllUsers");
+        filteredUsers = new List<UserInfoModel>(users);
+    }
+
+    private void FilterUsers()
+    {
+        filteredUsers = string.IsNullOrWhiteSpace(searchQuery)
+            ? new List<UserInfoModel>(users)
+            : users.Where(u => u.Username.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        StateHasChanged();
+    }
+
+    private async Task ConfirmDelete(int userId)
+    {
+        bool confirmResult = await JS.InvokeAsync<bool>("confirm", "האם אתה בטוח שברצונך למחוק את המשתמש?");
+        if (confirmResult)
+        {
+            await DeleteUser(userId);
+        }
+    }
+
+    private async Task DeleteUser(int userId)
+    {
+        var response = await Http.DeleteAsync($"api/Admin/{userId}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            users.RemoveAll(u => u.UserID == userId);
+            filteredUsers.RemoveAll(u => u.UserID == userId);
+            nonAdminCount--;
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine($"❌ שגיאה במחיקת משתמש: {await response.Content.ReadAsStringAsync()}");
+        }
+    }
+}

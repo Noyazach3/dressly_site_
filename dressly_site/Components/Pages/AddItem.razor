@@ -169,7 +169,7 @@
                 await selectedFile.OpenReadStream().CopyToAsync(stream);
             }
 
-            clothingItem.ImageURL = filePath;
+            clothingItem.ImageData = filePath;
             clothingItem.DateAdded = DateTime.Now;
 
             // קריאה ל-API לעדכון הדאטהבייס

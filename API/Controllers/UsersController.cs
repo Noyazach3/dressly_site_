@@ -150,4 +150,59 @@ public class UsersController : ControllerBase
 
         return $"{Convert.ToBase64String(salt)}:{hashed}";
     }
+
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetUserPassword([FromBody] ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest("שם המשתמש והאימייל נדרשים.");
+        }
+
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var transaction = await connection.BeginTransactionAsync();
+        try
+        {
+            // בדיקה אם המשתמש קיים
+            var checkUserQuery = "SELECT UserID FROM Users WHERE Username = @Username AND Email = @Email";
+            using var checkUserCommand = new MySqlCommand(checkUserQuery, connection, transaction);
+            checkUserCommand.Parameters.AddWithValue("@Username", request.Username);
+            checkUserCommand.Parameters.AddWithValue("@Email", request.Email);
+
+            var userId = await checkUserCommand.ExecuteScalarAsync();
+            if (userId == null)
+            {
+                return NotFound("שם המשתמש או האימייל אינם תואמים.");
+            }
+
+            // סיסמה זמנית מוצפנת
+            string tempPassword = "1234";
+            string hashedPassword = HashPassword(tempPassword);
+
+            // עדכון הסיסמה במסד הנתונים
+            var query = "UPDATE Users SET PasswordHash = @NewPasswordHash WHERE Username = @Username AND Email = @Email";
+            using var command = new MySqlCommand(query, connection, transaction);
+            command.Parameters.AddWithValue("@NewPasswordHash", hashedPassword);
+            command.Parameters.AddWithValue("@Username", request.Username);
+            command.Parameters.AddWithValue("@Email", request.Email);
+
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            if (rowsAffected > 0)
+            {
+                await transaction.CommitAsync();
+                return Ok($"סיסמת המשתמש אופסה בהצלחה. סיסמה זמנית: {tempPassword}");
+            }
+            return NotFound("המשתמש לא נמצא.");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"❌ שגיאה במהלך איפוס הסיסמה: {ex.Message}");
+            return StatusCode(500, "שגיאה במהלך איפוס הסיסמה.");
+        }
+    }
+
 }

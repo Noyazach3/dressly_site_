@@ -157,21 +157,25 @@
             using (var connection = new MySqlConnection(connectionString))
             {
                 await connection.OpenAsync();
-                var query = @"SELECT * FROM ClothingItems WHERE Season = @Season";
+                var query = @"SELECT ItemID, Category, ImageData FROM ClothingItems WHERE Season = @Season";
                 using (var command = new MySqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("@Season", season);
                     var reader = await command.ExecuteReaderAsync();
                     var items = new List<ClothingItem>();
+
                     while (await reader.ReadAsync())
                     {
-                        items.Add(new ClothingItem
+                        var item = new ClothingItem
                             {
                                 ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
                                 Category = reader.GetString(reader.GetOrdinal("Category")),
-                                ImageURL = reader.GetString(reader.GetOrdinal("ImageURL"))
-                            });
+                                ImageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader["ImageData"]
+                            };
+
+                        items.Add(item);
                     }
+
                     return items;
                 }
             }
@@ -182,6 +186,7 @@
             return new List<ClothingItem>();
         }
     }
+
 
     public class OutfitSelection
     {
