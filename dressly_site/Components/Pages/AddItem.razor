@@ -163,13 +163,12 @@
         if (selectedFile != null)
         {
             // שמירת הקובץ בשרת (ניתן להתאים את הלוגיקה לפי הצורך)
-            var filePath = Path.Combine("wwwroot", "images", selectedFile.Name);
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            using (var ms = new MemoryStream())
             {
-                await selectedFile.OpenReadStream().CopyToAsync(stream);
+                await selectedFile.OpenReadStream().CopyToAsync(ms);
+                clothingItem.ImageData = ms.ToArray(); // המרת הקובץ ל-byte[]
             }
 
-            clothingItem.ImageData = filePath;
             clothingItem.DateAdded = DateTime.Now;
 
             // קריאה ל-API לעדכון הדאטהבייס

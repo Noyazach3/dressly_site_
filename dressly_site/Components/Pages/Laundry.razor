@@ -73,7 +73,7 @@
                                 ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
                                 Category = reader.GetString(reader.GetOrdinal("Category")),
                                 ColorName = reader.GetString(reader.GetOrdinal("Color")),
-                                ImageURL = reader.GetString(reader.GetOrdinal("ImageURL")),
+                                ImageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader["ImageData"],
                                 WashAfterUses = reader.GetInt32(reader.GetOrdinal("WashAfterUses")),
                                 IsWashed = reader.GetBoolean(reader.GetOrdinal("IsWashed"))  // נניח שיש עמודה כזו בבסיס הנתונים
                             });

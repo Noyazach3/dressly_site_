@@ -63,7 +63,7 @@ public class ClothingService
                             Category = reader.GetString("Category"),
                             ColorID = reader.GetInt32("ColorID"),
                             Season = reader.GetString("Season"),
-                            ImageURL= reader.GetString("ImageURL"),
+                            ImageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader["ImageData"],
                             DateAdded = reader.IsDBNull("DateAdded") ? (DateTime?)null : reader.GetDateTime("DateAdded"),
                             LastWornDate = reader.IsDBNull("LastWornDate") ? (DateTime?)null : reader.GetDateTime("LastWornDate"),
                             WashAfterUses = reader.GetInt32("WashAfterUses"),
@@ -80,8 +80,8 @@ public class ClothingService
 
     // ------------------------------------------------------------------
     // הוספת פריט חדש לארון המשתמש
-    // INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageURL, DateAdded, WashAfterUses, LastWornDate)
-    // VALUES (@UserID, @Category, @ColorID, @Season, @ImageURL, @DateAdded, @WashAfterUses, NULL)
+    // INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageData, DateAdded, WashAfterUses, LastWornDate)
+    // VALUES (@UserID, @Category, @ColorID, @Season, @ImageData, @DateAdded, @WashAfterUses, NULL)
     // ------------------------------------------------------------------
     public async Task AddClothingItemAsync(ClothingItem item)
     {
@@ -89,8 +89,8 @@ public class ClothingService
         {
             await connection.OpenAsync();
             var query = @"
-            INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageURL, DateAdded, WashAfterUses, LastWornDate)
-            VALUES (@UserID, @Category, @ColorID, @Season, @ImageURL, @DateAdded, @WashAfterUses, NULL)";
+            INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageData, DateAdded, WashAfterUses, LastWornDate)
+            VALUES (@UserID, @Category, @ColorID, @Season, @ImageData, @DateAdded, @WashAfterUses, NULL)";
 
             using (var command = new MySqlCommand(query, connection))
             {
@@ -98,7 +98,7 @@ public class ClothingService
                 command.Parameters.AddWithValue("@Category", item.Category);
                 command.Parameters.AddWithValue("@ColorID", item.ColorID);
                 command.Parameters.AddWithValue("@Season", item.Season);
-                command.Parameters.AddWithValue("@ImageURL", item.ImageData);
+                command.Parameters.AddWithValue("@ImageData", item.ImageData);
                 command.Parameters.AddWithValue("@DateAdded", item.DateAdded ?? DateTime.Now);
                 command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
 

@@ -23,8 +23,22 @@
         {
             <div class="form-group">
                 <div class="item-card" @onmouseover="() => ShowFavoriteButton(outfit)" @onmouseleave="() => HideFavoriteButton(outfit)">
-                    <img src="@outfit.ImageURL" alt="@outfit.Name" class="item-image" />
-                    <div class="item-details">
+                    @if (outfit.ImageData != null)
+                    {
+                        <img src="@GetImageUrl(outfit.ImageData)" alt="@outfit.Name" class="item-image" />
+                    }
+                    else
+                    {
+                        <p>אין תמונה זמינה</p>
+                    }
+
+                    @code {
+                    private string GetImageUrl(byte[] imageData)
+                    {
+                        return $"data:image/jpeg;base64,{Convert.ToBase64String(imageData)}";
+                    }
+                }
+                <div class="item-details">
                         <p>@outfit.Name</p>
                         <p>@outfit.Description</p>
 
@@ -82,7 +96,7 @@
                                 OutfitID = reader.GetInt32(reader.GetOrdinal("OutfitID")),
                                 Name = reader.GetString(reader.GetOrdinal("Name")),
                                 Description = reader.GetString(reader.GetOrdinal("Description")),
-                                ImageURL = reader.GetString(reader.GetOrdinal("ImageURL")),
+                                ImageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader.GetValue(reader.GetOrdinal("ImageData")),
                                 IsFavorite = reader.GetBoolean(reader.GetOrdinal("IsFavorite")),
                                 IsHovered = false // ברירת מחדל - הכפתור לא מוצג
                             });
@@ -161,7 +175,7 @@
         public int OutfitID { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public string ImageURL { get; set; }
+        public string ImageData { get; set; }
         public bool IsFavorite { get; set; }
         public bool IsHovered { get; set; } // עבור מצב הצגת כפתור הוספה למועדפים
     }

@@ -16,8 +16,7 @@ public class OutfitsController : ControllerBase
         _config = configuration;
     }
 
-    // POST: api/outfits
-    [HttpPost]
+    [HttpPost("add")]
     public async Task<IActionResult> AddOutfit([FromBody] Outfit outfit)
     {
         string connectionString = _config.GetConnectionString("DefaultConnection");
@@ -27,24 +26,57 @@ public class OutfitsController : ControllerBase
             using (var connection = new MySqlConnection(connectionString))
             {
                 await connection.OpenAsync();
-                string query = @"
-                    INSERT INTO outfits (OutfitID, UserID, Name, DateCreated, EventID)
-                    VALUES (@OutfitID, @UserID, @Name, @DateCreated, @EventID)";
-                using (var command = new MySqlCommand(query, connection))
+                using (var transaction = await connection.BeginTransactionAsync())
                 {
-                    command.Parameters.AddWithValue("@OutfitID", outfit.OutfitID);
-                    command.Parameters.AddWithValue("@UserID", outfit.UserID);
-                    command.Parameters.AddWithValue("@Name", outfit.Name);
-                    command.Parameters.AddWithValue("@DateCreated", outfit.DateCreated);
-                    command.Parameters.AddWithValue("@EventID", outfit.EventID);
-                    await command.ExecuteNonQueryAsync();
+                    try
+                    {
+                        // 1️⃣ שמירת האאוטפיט בטבלת `Outfits`
+                        string queryOutfit = @"
+                        INSERT INTO Outfits (UserID, Name, DateCreated, EventID)
+                        VALUES (@UserID, @Name, @DateCreated, @EventID);
+                        SELECT LAST_INSERT_ID();";
+
+                        int outfitId;
+                        using (var command = new MySqlCommand(queryOutfit, connection, (MySqlTransaction)transaction))
+                        {
+                            command.Parameters.AddWithValue("@UserID", outfit.UserID);
+                            command.Parameters.AddWithValue("@Name", outfit.Name);
+                            command.Parameters.AddWithValue("@DateCreated", outfit.DateCreated ?? DateTime.UtcNow);
+                            command.Parameters.AddWithValue("@EventID", outfit.EventID);
+
+                            outfitId = Convert.ToInt32(await command.ExecuteScalarAsync());
+                        }
+
+                        // 2️⃣ שמירת פריטי הלבוש בטבלת `OutfitItems`
+                        foreach (var clothingItemId in outfit.OutfitItems.Select(o => o.ItemID))
+                        {
+                            string queryOutfitItem = @"
+                            INSERT INTO OutfitItems (OutfitID, ItemID)
+                            VALUES (@OutfitID, @ItemID);";
+
+                            using (var command = new MySqlCommand(queryOutfitItem, connection, (MySqlTransaction)transaction))
+                            {
+                                command.Parameters.AddWithValue("@OutfitID", outfitId);
+                                command.Parameters.AddWithValue("@ItemID", clothingItemId);
+                                await command.ExecuteNonQueryAsync();
+                            }
+                        }
+
+                        await transaction.CommitAsync();
+                        return Ok("Outfit saved successfully!");
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        return StatusCode(500, "Error saving outfit");
+                    }
                 }
             }
-            return Ok("Outfit added successfully");
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Message = "Error adding outfit", Error = ex.Message });
+            return StatusCode(500, $"Error: {ex.Message}");
         }
     }
+
 }

@@ -166,7 +166,7 @@ public class ClothingItemsController : ControllerBase
                 SET Category = @Category,
                     Season = @Season,
                     UsageType = @UsageType,
-                    ImageURL = @ImageURL,
+                    ImageData = @ImageData,
                     WashAfterUses = @WashAfterUses,
                     DateAdded = @DateAdded,
                     IsWashed = @IsWashed
@@ -177,7 +177,7 @@ public class ClothingItemsController : ControllerBase
                     command.Parameters.AddWithValue("@Category", item.Category);
                     command.Parameters.AddWithValue("@Season", item.Season);
                     command.Parameters.AddWithValue("@UsageType", item.UsageType);
-                    command.Parameters.AddWithValue("@ImageURL", item.ImageData);
+                    command.Parameters.AddWithValue("@ImageData", item.ImageData);
                     command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
                     command.Parameters.AddWithValue("@DateAdded", item.DateAdded);
                     command.Parameters.AddWithValue("@IsWashed", item.IsWashed ? 1 : 0);
