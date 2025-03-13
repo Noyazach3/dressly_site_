@@ -71,31 +71,61 @@ namespace API.Controllers
         // POST: api/clothingitems
         // הוספת פריט לבוש חדש עם הגדרת Content-Type "multipart/form-data"
         [HttpPost("add")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> AddClothingItem([FromForm] int UserID, [FromForm] string Category, [FromForm] int ColorID,
-                                                    [FromForm] string Season, [FromForm] IFormFile Image, [FromForm] int WashAfterUses,
-                                                    [FromForm] string UsageType, [FromForm] bool IsWashed)
+        public async Task<IActionResult> AddClothingItem(
+    [FromForm] int UserID,
+    [FromForm] string Category,
+    [FromForm] int ColorID,
+    [FromForm] string Season,
+    [FromForm] IFormFile Image, // שינוי הקלט לתמונה במקום byte[]
+    [FromForm] int WashAfterUses,
+    [FromForm] string UsageType,
+    [FromForm] bool IsWashed)
         {
             string connectionString = _configuration.GetConnectionString("DefaultConnection");
 
             try
             {
-                byte[] imageData = null;
+                int imageId = 0; // משתנה לשמירת ה-ImageID
+
+                // שמירת התמונה בטבלה נפרדת
                 if (Image != null)
                 {
+                    byte[] imageData = null;
                     using (var ms = new MemoryStream())
                     {
                         await Image.CopyToAsync(ms);
-                        imageData = ms.ToArray();
+                        imageData = ms.ToArray(); // המרת התמונה ל-byte[]
+                    }
+
+                    // שמירת התמונה בטבלת images
+                    using (var connection = new MySqlConnection(connectionString))
+                    {
+                        await connection.OpenAsync();
+                        string queryImage = @"
+                    INSERT INTO images (OwnerID, ImageData, ImageType)
+                    VALUES (@OwnerID, @ImageData, @ImageType)";
+
+                        using (var command = new MySqlCommand(queryImage, connection))
+                        {
+                            command.Parameters.AddWithValue("@OwnerID", UserID); // קשר עם UserID
+                            command.Parameters.AddWithValue("@ImageData", imageData);
+                            command.Parameters.AddWithValue("@ImageType", Image.ContentType);
+
+                            await command.ExecuteNonQueryAsync();
+
+                            // קבלת ה-ImageID שנשמר
+                            imageId = (int)command.LastInsertedId;
+                        }
                     }
                 }
 
+                // שמירת פריט לבוש בטבלת clothingitems
                 using (var connection = new MySqlConnection(connectionString))
                 {
                     await connection.OpenAsync();
                     string query = @"
-                    INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageData, DateAdded, WashAfterUses, UsageType, IsWashed)
-                    VALUES (@UserID, @Category, @ColorID, @Season, @ImageData, @DateAdded, @WashAfterUses, @UsageType, @IsWashed)";
+                INSERT INTO clothingitems (UserID, Category, ColorID, Season, ImageID, DateAdded, WashAfterUses, UsageType, IsWashed)
+                VALUES (@UserID, @Category, @ColorID, @Season, @ImageID, @DateAdded, @WashAfterUses, @UsageType, @IsWashed)";
 
                     using (var command = new MySqlCommand(query, connection))
                     {
@@ -103,15 +133,16 @@ namespace API.Controllers
                         command.Parameters.AddWithValue("@Category", Category);
                         command.Parameters.AddWithValue("@ColorID", ColorID);
                         command.Parameters.AddWithValue("@Season", Season);
-                        command.Parameters.AddWithValue("@ImageData", imageData);
+                        command.Parameters.AddWithValue("@ImageID", imageId); // הוספת ה-ImageID שנשמר
                         command.Parameters.AddWithValue("@DateAdded", DateTime.UtcNow);
                         command.Parameters.AddWithValue("@WashAfterUses", WashAfterUses);
                         command.Parameters.AddWithValue("@UsageType", UsageType);
-                        command.Parameters.AddWithValue("@IsWashed", IsWashed ? 1 : 0);
+                        command.Parameters.AddWithValue("@IsWashed", IsWashed);
 
                         await command.ExecuteNonQueryAsync();
                     }
                 }
+
                 return Ok("Clothing item added successfully");
             }
             catch (Exception ex)
@@ -119,6 +150,10 @@ namespace API.Controllers
                 return StatusCode(500, new { Message = "Error adding clothing item", Error = ex.Message });
             }
         }
+
+
+
+
 
         [HttpGet("get-image/{itemId}")]
         public async Task<IActionResult> GetImage(int itemId)

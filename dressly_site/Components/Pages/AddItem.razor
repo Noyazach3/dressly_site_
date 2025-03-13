@@ -162,48 +162,31 @@
     {
         if (selectedFile != null)
         {
-            // שמירת הקובץ בשרת (ניתן להתאים את הלוגיקה לפי הצורך)
-            using (var ms = new MemoryStream())
+            var content = new MultipartFormDataContent();
+            content.Add(new StringContent("1"), "UserID"); // ✨ צריך לשנות ל-ID אמיתי של משתמש
+            content.Add(new StringContent(clothingItem.Category), "Category");
+            content.Add(new StringContent(clothingItem.ColorName), "ColorID");
+            content.Add(new StringContent(clothingItem.Season), "Season");
+            content.Add(new StringContent(clothingItem.WashAfterUses.ToString()), "WashAfterUses");
+            content.Add(new StringContent(clothingItem.UsageType), "UsageType");
+            content.Add(new StringContent(clothingItem.IsWashed.ToString()), "IsWashed");
+
+            var fileContent = new StreamContent(selectedFile.OpenReadStream());
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType);
+            content.Add(fileContent, "Image", selectedFile.Name);
+
+            var response = await Http.PostAsync("https://localhost:5177/api/clothingitems/add", content);
+
+            if (response.IsSuccessStatusCode)
             {
-                await selectedFile.OpenReadStream().CopyToAsync(ms);
-                clothingItem.ImageData = ms.ToArray(); // המרת הקובץ ל-byte[]
+                Console.WriteLine("Item uploaded successfully!");
+                Navigation.NavigateTo("/home");
             }
-
-            clothingItem.DateAdded = DateTime.Now;
-
-            // קריאה ל-API לעדכון הדאטהבייס
-            await SaveClothingItemToDatabase(clothingItem);
-
-            // ניווט לעמוד הבית לאחר העדכון
-            NavigateToHome();
+            else
+            {
+                Console.WriteLine("Error uploading item");
+            }
         }
     }
-
-    private async Task SaveClothingItemToDatabase(ClothingItem item)
-    {
-        HttpResponseMessage response;
-
-        if (item.ItemID == 0)
-        {
-            // יצירת פריט חדש עם POST
-            response = await Http.PostAsJsonAsync("api/clothingitems", item);
-        }
-        else
-        {
-            // עדכון פריט קיים עם PUT
-            response = await Http.PutAsJsonAsync($"api/clothingitems/{item.ItemID}", item);
-        }
-
-        if (!response.IsSuccessStatusCode)
-        {
-            // טיפול בשגיאה - ניתן להוסיף הודעת שגיאה למשתמש
-            Console.WriteLine("אירעה שגיאה בעדכון הפריט");
-        }
-    }
-
-    private void NavigateToHome()
-    {
-        Navigation.NavigateTo("/home");
-    }
-
 }
+
