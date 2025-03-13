@@ -11,6 +11,9 @@ namespace ClassLibrary1.Models
         public string Name { get; set; }
         public DateTime? DateCreated { get; set; }
         public int EventID { get; set; }
+        public List<int> ClothingItemIDs { get; set; } = new List<int>(); // ✅ שמירת מזהים של פריטים בלבד
+
+
 
         public User User { get; set; }
         public Event Event { get; set; }
