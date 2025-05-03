@@ -1,4 +1,4 @@
-﻿namespace ClassLibrary1.Models
+﻿namespace ClassLibrary1.DTOs
 {
     public class ResetPasswordRequest
     {

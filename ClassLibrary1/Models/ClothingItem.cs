@@ -9,24 +9,38 @@ namespace ClassLibrary1.Models
     {
         [Key] // מגדיר את ItemID כמפתח ראשי
         public int ItemID { get; set; }
+
         public int UserID { get; set; } // מזהה המשתמש
+
         public int? ImageID { get; set; }
-        public string Category { get; set; }
-        public int ColorID { get; set; } // מזהה הצבע
+
+        [Required(ErrorMessage = "שדה חובה")]
+        public string Category { get; set; } // קטגורית הפריט
+
+        public int? ColorID { get; set; } // מזהה הצבע – לא בשימוש כרגע
+
+        [Required(ErrorMessage = "שדה חובה")]
         public string Season { get; set; }
+
         public DateTime? DateAdded { get; set; }
+
         public DateTime? LastWornDate { get; set; }
-        public int WashAfterUses { get; set; } = 1;
+
+        [Required(ErrorMessage = "שדה חובה")]
         public string UsageType { get; set; } // סוג השימוש
+
+        [Required(ErrorMessage = "שדה חובה")]
         public string ColorName { get; set; } // שם הצבע
-        public bool IsWashed { get; set; }
 
-
+        // קשרים לטבלאות אחרות
         public User User { get; set; }
+
         public Color Color { get; set; }
-        public ICollection<OutfitItem> OutfitItems { get; set; }    
+
+        public ICollection<OutfitItem> OutfitItems { get; set; }
+
         public ICollection<Favorite> Favorites { get; set; }
+
         public ICollection<ClothingItemTag> ClothingItemTags { get; set; }
-        public ICollection<ClothingItemUsage> ClothingItemUsages { get; set; }
     }
 }

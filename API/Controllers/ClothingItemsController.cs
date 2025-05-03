@@ -7,6 +7,7 @@ using System.Data;
 using System.Threading.Tasks;
 using ClassLibrary1.Models;
 using System.IO;
+using ClassLibrary1.DTOs;
 
 
 namespace API.Controllers
@@ -53,10 +54,8 @@ namespace API.Controllers
                                     ? new ClassLibrary1.Models.Color()
                                     : new ClassLibrary1.Models.Color { ColorName = reader.GetString(reader.GetOrdinal("ColorName")) },
                                 ImageID = reader.IsDBNull(reader.GetOrdinal("ImageID")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("ImageID")),
-                                WashAfterUses = reader.IsDBNull(reader.GetOrdinal("WashAfterUses")) ? 1 : reader.GetInt32(reader.GetOrdinal("WashAfterUses")),
                                 DateAdded = reader.IsDBNull(reader.GetOrdinal("DateAdded")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("DateAdded")),
                                 LastWornDate = reader.IsDBNull(reader.GetOrdinal("LastWornDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("LastWornDate")),
-                                IsWashed = reader.IsDBNull(reader.GetOrdinal("IsWashed")) ? false : reader.GetInt32(reader.GetOrdinal("IsWashed")) == 1
                             };
 
                             items.Add(item);
@@ -75,74 +74,62 @@ namespace API.Controllers
 
 
         [HttpPost("addClothingItem")]
-        public async Task<IActionResult> AddClothingItem([FromForm] ClothingItem item, IFormFile imageFile)
+        public async Task<IActionResult> AddClothingItem([FromForm] ClothingItemDto itemDto, IFormFile imageFile)
         {
             string connectionString = _configuration.GetConnectionString("DefaultConnection");
 
             try
             {
-                // 1. עדכון שדות:
-                item.ColorID = await GetColorIdFromColorName(item.ColorName, connectionString);
-                item.DateAdded = DateTime.Now; // עדכון אוטומטי של תאריך הוספה
-                item.IsWashed = false; // ברירת מחדל לשדה IsWashed
+                itemDto.DateAdded = DateTime.Now;
 
-                // 2. הוספת הפריט לבסיס הנתונים
                 int newItemId;
                 using (var connection = new MySqlConnection(connectionString))
                 {
                     await connection.OpenAsync();
                     string insertQuery = @"
-                INSERT INTO clothingitems (UserID, Category, ColorID, Season, DateAdded, WashAfterUses, UsageType, IsWashed)
-                VALUES (@UserID, @Category, @ColorID, @Season, @DateAdded, @WashAfterUses, @UsageType, @IsWashed);
-                SELECT LAST_INSERT_ID();"; // קבלת ה-ItemID שנוצר
+                INSERT INTO clothingitems (UserID, Category, Season, DateAdded, UsageType, ColorName)
+                VALUES (@UserID, @Category, @Season, @DateAdded, @UsageType, @ColorName);
+                SELECT LAST_INSERT_ID();";
+
                     using (var command = new MySqlCommand(insertQuery, connection))
                     {
-                        command.Parameters.AddWithValue("@UserID", item.UserID);
-                        command.Parameters.AddWithValue("@Category", item.Category);
-                        command.Parameters.AddWithValue("@ColorID", item.ColorID);
-                        command.Parameters.AddWithValue("@Season", item.Season);
-                        command.Parameters.AddWithValue("@DateAdded", item.DateAdded);
-                        command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
-                        command.Parameters.AddWithValue("@UsageType", item.UsageType);
-                        command.Parameters.AddWithValue("@IsWashed", item.IsWashed ? 1 : 0);
+                        command.Parameters.AddWithValue("@UserID", itemDto.UserID);
+                        command.Parameters.AddWithValue("@Category", itemDto.Category);
+                        command.Parameters.AddWithValue("@Season", itemDto.Season);
+                        command.Parameters.AddWithValue("@DateAdded", itemDto.DateAdded);
+                        command.Parameters.AddWithValue("@UsageType", itemDto.UsageType);
+                        command.Parameters.AddWithValue("@ColorName", itemDto.ColorName);
 
-                        newItemId = Convert.ToInt32(await command.ExecuteScalarAsync()); // נשמור את ה-ItemID
+                        newItemId = Convert.ToInt32(await command.ExecuteScalarAsync());
                     }
                 }
 
-                // 3. אם נבחרה תמונה, מעלים אותה ומקבלים ImageID
-                int imageId = 0;
                 if (imageFile != null && imageFile.Length > 0)
                 {
-                    using (var memoryStream = new MemoryStream())
-                    {
-                        await imageFile.CopyToAsync(memoryStream);
-                        var image = new Image
-                        {
-                            OwnerID = newItemId, // הפריט שיצרנו
-                            ImageData = memoryStream.ToArray(),
-                            UploadDate = DateTime.Now,
-                            ImageType = imageFile.ContentType
-                        };
+                    using var memoryStream = new MemoryStream();
+                    await imageFile.CopyToAsync(memoryStream);
 
-                        imageId = await UploadImage(image); // שמירת התמונה בטבלה נפרדת
-                    }
-
-                    // 4. עדכון הפריט עם ImageID
-                    using (var connection = new MySqlConnection(connectionString))
+                    var image = new Image
                     {
-                        await connection.OpenAsync();
-                        string updateQuery = "UPDATE clothingitems SET ImageID = @ImageID WHERE ItemID = @ItemID";
-                        using (var command = new MySqlCommand(updateQuery, connection))
-                        {
-                            command.Parameters.AddWithValue("@ImageID", imageId);
-                            command.Parameters.AddWithValue("@ItemID", newItemId); // עדכון ה-ItemID שנוצר
-                            await command.ExecuteNonQueryAsync();
-                        }
-                    }
+                        OwnerID = newItemId,
+                        ImageData = memoryStream.ToArray(),
+                        ImageType = imageFile.ContentType,
+                        UploadDate = DateTime.Now
+                    };
+
+                    var imageId = await UploadImage(image);
+
+                    using var connection = new MySqlConnection(connectionString);
+                    await connection.OpenAsync();
+                    var updateQuery = "UPDATE clothingitems SET ImageID = @ImageID WHERE ItemID = @ItemID";
+
+                    using var command = new MySqlCommand(updateQuery, connection);
+                    command.Parameters.AddWithValue("@ImageID", imageId);
+                    command.Parameters.AddWithValue("@ItemID", newItemId);
+                    await command.ExecuteNonQueryAsync();
                 }
 
-                return Ok("Clothing item added successfully.");
+                return Ok(newItemId);
             }
             catch (Exception ex)
             {
@@ -150,33 +137,52 @@ namespace API.Controllers
             }
         }
 
-
-
-
-
-
-        // עוזרת לקבל את ColorID לפי ColorName
-        private async Task<int> GetColorIdFromColorName(string colorName, string connectionString)
+        [HttpPost("uploadImageForItem")]
+        public async Task<IActionResult> UploadImageForItem([FromForm] ImageUploadDto dto)
         {
-            using (var connection = new MySqlConnection(connectionString))
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+            try
             {
-                await connection.OpenAsync();
-                string query = "SELECT ColorID FROM color WHERE ColorName = @ColorName";
-                using (var command = new MySqlCommand(query, connection))
+                var image = new Image
                 {
-                    command.Parameters.AddWithValue("@ColorName", colorName);
-                    var result = await command.ExecuteScalarAsync();
-                    if (result != null)
+                    OwnerID = dto.ItemID,
+                    ImageData = await ConvertToByteArray(dto.ImageFile),
+                    UploadDate = DateTime.Now,
+                    ImageType = dto.ImageFile.ContentType
+                };
+
+                int imageId = await UploadImage(image);
+
+                using (var connection = new MySqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    string updateQuery = "UPDATE clothingitems SET ImageID = @ImageID WHERE ItemID = @ItemID";
+                    using (var command = new MySqlCommand(updateQuery, connection))
                     {
-                        return Convert.ToInt32(result);
-                    }
-                    else
-                    {
-                        throw new Exception("Color not found for the given ColorName.");
+                        command.Parameters.AddWithValue("@ImageID", imageId);
+                        command.Parameters.AddWithValue("@ItemID", dto.ItemID);
+                        await command.ExecuteNonQueryAsync();
                     }
                 }
+
+                return Ok("Image uploaded successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error uploading image", Error = ex.Message });
             }
         }
+
+        private async Task<byte[]> ConvertToByteArray(IFormFile file)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                await file.CopyToAsync(memoryStream);
+                return memoryStream.ToArray();
+            }
+        }
+
 
         // POST: api/ClothingItems/uploadImage
         [HttpPost("uploadImage")]

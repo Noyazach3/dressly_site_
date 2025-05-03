@@ -68,7 +68,9 @@
             var client = ClientFactory.CreateClient();
             client.BaseAddress = new Uri("http://localhost:5177/api/"); // ודא שזה ה-URL הנכון של ה-API שלך
 
-            var response = await client.PostAsJsonAsync("User/Register", user);
+            user.Role = "User"; // נדרש לפי מבנה ה-API
+
+            var response = await client.PostAsJsonAsync("Users/Register", user);
             if (response.IsSuccessStatusCode)
             {
                 SuccessMessage = "הרישום בוצע בהצלחה!";

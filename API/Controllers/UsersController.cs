@@ -2,11 +2,11 @@
 using Microsoft.AspNetCore.Authorization;
 using MySql.Data.MySqlClient;
 using System.Data;
-using ClassLibrary1.Models;
 using System.Security.Cryptography;
 using ClassLibrary1.Services;
 using System;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using ClassLibrary1.DTOs;
 
 namespace API.Controllers
 {

@@ -3,7 +3,6 @@
 @inject NavigationManager Navigation
 @using ClassLibrary1.Models
 
-
 <div class="container mt-5">
     <div class="card shadow-sm border-0">
         <div class="card-body text-end">
@@ -23,15 +22,9 @@
                             <option value="">בחר...</option>
                             <option value="Shirt">חולצה</option>
                             <option value="Pants">מכנסיים</option>
-                            <option value="Skirt">חצאית</option>
-                            <option value="Dress">שמלה</option>
-                            <option value="TankTop">גופייה</option>
-                            <option value="Cardigan">עליונית</option>
-                            <option value="Jacket">גקט</option>
-                            <option value="Bag">תיק</option>
-                            <option value="Shoes">נעליים</option>
-                            <option value="Accessories">אקססוריז</option>
+                            <!-- הוסיפי קטגוריות נוספות -->
                         </InputSelect>
+                        <ValidationMessage For="@(() => clothingItem.Category)" />
                     </div>
 
                     <div class="mb-3">
@@ -41,6 +34,7 @@
                             <option value="Summer">קיץ</option>
                             <option value="Winter">חורף</option>
                         </InputSelect>
+                        <ValidationMessage For="@(() => clothingItem.Season)" />
                     </div>
 
                     <div class="mb-3">
@@ -50,6 +44,7 @@
                             <option value="Casual">יום-יומי</option>
                             <option value="Festive">חגיגי</option>
                         </InputSelect>
+                        <ValidationMessage For="@(() => clothingItem.UsageType)" />
                     </div>
 
                     <div class="mb-3">
@@ -58,23 +53,9 @@
                             <option value="">בחר...</option>
                             <option value="Red">אדום</option>
                             <option value="Blue">כחול</option>
-                            <option value="Green">ירוק</option>
-                            <option value="Yellow">צהוב</option>
-                            <option value="Black">שחור</option>
-                            <option value="White">לבן</option>
+                            <!-- הוסיפי צבעים נוספים -->
                         </InputSelect>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="washAfterUses" class="form-label">?כל כמה שימושים לכבס את הפריט</label>
-                        <InputSelect id="washAfterUses" class="form-select" @bind-Value="clothingItem.WashAfterUses">
-                            <option value="">בחר...</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                        </InputSelect>
+                        <ValidationMessage For="@(() => clothingItem.ColorName)" />
                     </div>
 
                     <div class="d-grid">
@@ -117,32 +98,23 @@
             box-shadow: 0 4px 8px rgba(236, 135, 184, 0.3);
         }
 </style>
+
 @code {
     private ClothingItem clothingItem = new ClothingItem();
     private IBrowserFile selectedFile;
-    // משתנה לקבלת מזהה המשתמש המחובר – יש לממש בהתאם למערכת האימות שלך
-    private int currentUserId = 1; // לדוגמה, להחליף בערך אמיתי
+    private int currentUserId = 1; // לדוגמה – בהמשך לשלב האימות
     private bool isStep1Completed = false;
     private bool isComplete = false;
 
-    // שלב 1: טיפול בהגשת הטופס עם המאפיינים (ללא תמונה)
     private async Task HandleStep1Submit()
     {
-        // עדכון UserID מהמשתמש המחובר
+
         clothingItem.UserID = currentUserId;
-        // DateAdded יתמלא אוטומטית, אפשר גם לקבוע כאן:
         clothingItem.DateAdded = DateTime.Now;
-        // IsWashed כברירת מחדל false
-        clothingItem.IsWashed = false;
 
-        // אם יש lookup לטבלת Colors – כאן ניתן לבצע חיפוש לקבלת ColorID לפי ColorName
-        // לדוגמה: clothingItem.ColorID = await GetColorIdFromColorName(clothingItem.ColorName);
-
-        // הוספת הפריט ללא תמונה, וכך יווצר ItemID
-        var response = await Http.PostAsJsonAsync("https://localhost:5177/api/clothingitems/addClothingItemAttributes", clothingItem);
+        var response = await Http.PostAsJsonAsync("http://localhost:5177/api/clothingitems/addClothingItemAttributes", clothingItem);
         if (response.IsSuccessStatusCode)
         {
-            // נניח שה-API מחזיר את ה-ItemID החדש
             clothingItem.ItemID = await response.Content.ReadFromJsonAsync<int>();
             isStep1Completed = true;
         }
@@ -152,21 +124,19 @@
         }
     }
 
-    // שלב 2: טיפול בבחירת התמונה והעלאתה
     private async Task HandleUploadImage()
     {
         if (selectedFile != null)
         {
             var content = new MultipartFormDataContent();
-            // שליחת UserID, ItemID ועוד אם נדרש – כאן חשוב לשלוח את ItemID שקיבלנו
             content.Add(new StringContent(clothingItem.ItemID.ToString()), "ItemID");
 
             var fileContent = new StreamContent(selectedFile.OpenReadStream());
             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType);
-            // השדה שנשלח צריך להתאים לשם המצופה ב-API (לדוגמה, "imageFile")
-            content.Add(fileContent, "imageFile", selectedFile.Name);
+            content.Add(fileContent, "ImageFile", selectedFile.Name); // ✅ הקפד שהשם בדיוק ככה!
 
-            var response = await Http.PostAsync("https://localhost:5177/api/clothingitems/uploadImageForItem", content);
+            var response = await Http.PostAsync("http://localhost:5177/api/clothingitems/uploadImageForItem", content);
+
             if (response.IsSuccessStatusCode)
             {
                 isComplete = true;

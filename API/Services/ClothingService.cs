@@ -60,7 +60,6 @@ namespace API.Services
                                 ImageID = reader.IsDBNull(reader.GetOrdinal("ImageID")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("ImageID")),
                                 DateAdded = reader.IsDBNull(reader.GetOrdinal("DateAdded")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("DateAdded")),
                                 LastWornDate = reader.IsDBNull(reader.GetOrdinal("LastWornDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("LastWornDate")),
-                                WashAfterUses = reader.GetInt32(reader.GetOrdinal("WashAfterUses")),
                                 UsageType = reader.GetString(reader.GetOrdinal("UsageType")),
                                 ColorName = reader.GetString(reader.GetOrdinal("ColorName"))
                             };
@@ -88,7 +87,6 @@ namespace API.Services
                     command.Parameters.AddWithValue("@ColorID", item.ColorID);
                     command.Parameters.AddWithValue("@Season", item.Season);
                     command.Parameters.AddWithValue("@DateAdded", item.DateAdded ?? DateTime.Now);
-                    command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
 
                     await command.ExecuteNonQueryAsync();
                 }
