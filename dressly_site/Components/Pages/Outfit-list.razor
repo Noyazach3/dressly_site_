@@ -6,57 +6,78 @@
 @using MySql.Data.MySqlClient
 @using System.Linq
 
-<div class="center-page">
-    <h1>הצג את האאוטפיטים שלי</h1>
 
-    <div class="filter-container-left">
-        <label for="outfit-filter">בחר:</label>
-        <InputSelect id="outfit-filter" @bind-Value="outfitFilter" class="filter-select">
-            <option value="All">הראה את כל האאוטפיטים</option>
-            <option value="Favorites">הראה רק מועדפים</option>
-        </InputSelect>
+
+<div class="container py-5 text-center">
+    <h2 class="fw-bold text-pink mb-4">✨ האאוטפיטים שלי</h2>
+
+    <div class="d-flex justify-content-center mb-4">
+        <div class="text-end" dir="rtl" style="max-width: 300px; width: 100%;">
+            <label for="outfit-filter" class="form-label fw-semibold">בחר תצוגה:</label>
+            <InputSelect id="outfit-filter" @bind-Value="outfitFilter" class="form-select">
+                <option value="All">הראה את כל האאוטפיטים</option>
+                <option value="Favorites">הראה רק מועדפים</option>
+            </InputSelect>
+        </div>
     </div>
 
-    <div class="form-container">
+    <div class="row row-cols-1 row-cols-md-2 g-4 justify-content-center">
         @foreach (var outfit in FilterOutfits(outfits, outfitFilter))
         {
-            <div class="form-group">
-                <div class="item-card" @onmouseover="() => ShowFavoriteButton(outfit)" @onmouseleave="() => HideFavoriteButton(outfit)">
-                    @if (outfit.ClothingItemIDs != null && outfit.ClothingItemIDs.Count > 0)
-                    {
-                        @foreach (var itemId in outfit.ClothingItemIDs)
+            <div class="col">
+                <div class="card border-0 shadow-sm p-3 text-center h-100"
+                     @onmouseover="() => ShowFavoriteButton(outfit)"
+                     @onmouseleave="() => HideFavoriteButton(outfit)">
+                    <div class="d-flex justify-content-center flex-wrap mb-3">
+                        @if (outfit.ClothingItemIDs != null && outfit.ClothingItemIDs.Count > 0)
                         {
-                            <img src="@GetImageUrl(itemId)" alt="Clothing Item" class="item-image" />
+                            @foreach (var itemId in outfit.ClothingItemIDs)
+                            {
+                                <img src="@GetImageUrl(itemId)" alt="Clothing Item"
+                                     class="rounded me-1 mb-2" style="width: 80px; height: 80px; object-fit: cover;" />
+                            }
                         }
-                    }
-                    else
-                    {
-                        <p>אין תמונה זמינה</p>
-                    }
-                    <div class="item-details">
-                        <p>@outfit.Name</p>
-                        <p>@outfit.Description</p>
+                        else
+                        {
+                            <p class="text-muted">אין תמונה זמינה</p>
+                        }
+                    </div>
+
+                    <div>
+                        <h5 class="mb-1">@outfit.Name</h5>
+                        <p class="text-muted small">@outfit.Description</p>
 
                         @if (outfitFilter == "All")
                         {
-                            <button class="btn pink-btn favorite-btn" @onclick="() => AddToFavorites(outfit)" style="display:@(outfit.IsHovered ? "block" : "none")">הוסף למועדפים</button>
+                            <button class="btn btn-sm rounded-pill mt-2"
+                                    style="background-color: #f4b6c2; color: white; font-weight: 500; display:@(outfit.IsHovered ? "inline-block" : "none")"
+                                    @onclick="() => AddToFavorites(outfit)">
+                                הוסף למועדפים 💖
+                            </button>
                         }
                     </div>
                 </div>
             </div>
         }
-
-        @if (outfitFilter == "All")
-        {
-            <button type="submit" class="btn pink-btn">עדכן מועדפים</button>
-        }
     </div>
-</div>
 
-@if (outfitSelection.IsUpdated)
-{
-    <h4>העדכון בוצע בהצלחה!</h4>
-}
+    @if (outfitFilter == "All")
+    {
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-sm px-4 py-2 rounded-pill"
+                    style="background-color: #f4b6c2; color: white; font-weight: 600;">
+                עדכן מועדפים
+            </button>
+        </div>
+    }
+
+    @if (outfitSelection.IsUpdated)
+    {
+        <div class="mt-4 alert alert-success">
+            <h6 class="mb-0">✨ העדכון בוצע בהצלחה!</h6>
+        </div>
+    }
+</div>
 
 @code {
     private OutfitSelection outfitSelection = new OutfitSelection();

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.OpenApi.Models;
+using System.Text.Json.Serialization;
 
 namespace API
 {
@@ -32,12 +33,13 @@ namespace API
             builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
             // ✅ 4. הוספת Controllers עם טיפול בבעיות סדר ב-JSON
-            builder.Services.AddControllers()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
-                    options.JsonSerializerOptions.PropertyNamingPolicy = null; // שמירת שמות מקוריים
-                });
+            builder.Services.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                options.JsonSerializerOptions.PropertyNamingPolicy = null;
+
+            });
+
 
             // ✅ 5. הוספת Swagger עם פתרון לקונפליקטים של שמות מודלים
             builder.Services.AddEndpointsApiExplorer();

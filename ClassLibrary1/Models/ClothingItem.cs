@@ -10,10 +10,10 @@ namespace ClassLibrary1.Models
         [Key] // מגדיר את ItemID כמפתח ראשי
         public int ItemID { get; set; }
         public int UserID { get; set; } // מזהה המשתמש
+        public int? ImageID { get; set; }
         public string Category { get; set; }
         public int ColorID { get; set; } // מזהה הצבע
         public string Season { get; set; }
-        public byte[] ImageData { get; set; } // שדה לתמונה בפורמט BLOB
         public DateTime? DateAdded { get; set; }
         public DateTime? LastWornDate { get; set; }
         public int WashAfterUses { get; set; } = 1;

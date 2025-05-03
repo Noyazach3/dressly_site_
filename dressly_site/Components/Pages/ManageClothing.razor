@@ -24,26 +24,26 @@
         overflow: hidden;
     }
 
-    .table th {
-        background-color: #F8E1E7; /* ורוד פסטלי */
-        color: #333;
-        padding: 12px;
-        text-align: center;
-    }
+        .table th {
+            background-color: #F8E1E7; /* ורוד פסטלי */
+            color: #333;
+            padding: 12px;
+            text-align: center;
+        }
 
-    .table td {
-        padding: 12px;
-        text-align: center;
-        border-bottom: 1px solid #ddd;
-    }
+        .table td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
 
-    .table img {
-        width: 60px;
-        height: 60px;
-        border-radius: 10px;
-        object-fit: cover;
-        border: 2px solid #F28D9E; /* ורוד עדין */
-    }
+        .table img {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid #F28D9E; /* ורוד עדין */
+        }
 
     .btn-delete {
         background-color: #F28D9E; /* ורוד פסטלי */
@@ -55,9 +55,9 @@
         transition: 0.3s;
     }
 
-    .btn-delete:hover {
-        background-color: #D46A7E;
-    }
+        .btn-delete:hover {
+            background-color: #D46A7E;
+        }
 
     .badge-color {
         padding: 6px 10px;
@@ -98,7 +98,12 @@ else
                         <td>@item.Category</td>
                         <td><span class="badge badge-color">@item.ColorID</span></td>
                         <td>@item.Season</td>
-                        <td><img src="@item.ImageData " alt="תמונה"></td>
+                        <td>
+                            @if (item.ImageID.HasValue && imageCache.ContainsKey(item.ItemID))
+                            {
+                                <img src="@($"data:image/jpeg;base64,{imageCache[item.ItemID]}")" alt="תמונה" />
+                            }
+                        </td>
                         <td>
                             <button class="btn-delete" @onclick="() => DeleteClothingItem(item.ItemID)">🗑 מחק</button>
                         </td>
@@ -111,10 +116,29 @@ else
 
 @code {
     private List<ClothingItem> clothingItems = new();
+    // מילון לאחסון נתוני תמונה (Base64) כאשר המפתח הוא ItemID
+    private Dictionary<int, string> imageCache = new();
 
     protected override async Task OnInitializedAsync()
     {
         clothingItems = await Http.GetFromJsonAsync<List<ClothingItem>>("api/Clothing/user/1"); // שנה ל-ID אמיתי
+        await LoadImages();
+    }
+
+    private async Task LoadImages()
+    {
+        // עבור כל פריט שיש לו ImageID, טען את נתוני התמונה והמר אותם ל-Base64, ואחסן במילון
+        foreach (var item in clothingItems)
+        {
+            if (item.ImageID.HasValue)
+            {
+                var imageData = await GetImageData(item.ImageID.Value);
+                if (imageData != null)
+                {
+                    imageCache[item.ItemID] = Convert.ToBase64String(imageData);
+                }
+            }
+        }
     }
 
     private async Task DeleteClothingItem(int itemId)
@@ -129,6 +153,22 @@ else
         else
         {
             Console.WriteLine($"❌ שגיאה במחיקת פריט: {await response.Content.ReadAsStringAsync()}");
+        }
+    }
+
+    // פונקציה לשליפת תמונת פריט מתוך ה-API (נניח שיש API שמחזיר את ImageData)
+    private async Task<byte[]> GetImageData(int imageId)
+    {
+        // כאן ניתן לבצע קריאה ל-API שמחזיר את ImageData לפי ImageID
+        // דוגמה: "api/Image/{imageId}"
+        try
+        {
+            return await Http.GetFromJsonAsync<byte[]>($"api/Image/{imageId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting image data: {ex.Message}");
+            return null;
         }
     }
 }

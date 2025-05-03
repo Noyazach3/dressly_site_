@@ -1,192 +1,185 @@
 ﻿@page "/add-item"
-@inject IConfiguration Configuration
-@inject NavigationManager Navigation
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @using ClassLibrary1.Models
 
 
-<div class="center-page">
-    <h1>העלאת פריט לבוש</h1>
+<div class="container mt-5">
+    <div class="card shadow-sm border-0">
+        <div class="card-body text-end">
 
-    <div class="form-container text-right">
-        <EditForm Model="@clothingItem" OnValidSubmit="HandleValidSubmit">
-            <DataAnnotationsValidator />
-            <ValidationSummary />
+            <h2 class="card-title text-center mb-4">הוספת פריט לבוש</h2>
 
-            <!-- העלאת תמונה -->
-            <div class="form-group">
-                <label for="imageUpload">:העלה תמונה</label>
-                <InputFile id="imageUpload" OnChange="HandleFileSelected" class="file-upload" />
-            </div>
+            @if (!isStep1Completed)
+            {
+                <h5 class="text-muted mb-4 text-center">שלב 1 מתוך 2: הזנת פרטי הפריט</h5>
+                <EditForm Model="@clothingItem" OnValidSubmit="HandleStep1Submit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
 
-            <!-- בחירת סוג פריט -->
-            <div class="form-group">
-                <label for="category">:בחר סוג פריט</label>
-                <InputSelect id="category" @bind-Value="clothingItem.Category">
-                    <option value="Shirt">חולצה</option>
-                    <option value="Pants">מכנסיים</option>
-                    <option value="Skirt">חצאית</option>
-                    <option value="Dress">שמלה</option>
-                    <option value="TankTop">גופייה</option>
-                    <option value="Cardigan">עליונית</option>
-                    <option value="Jacket">גקט</option>
-                    <option value="Bag">תיק</option>
-                    <option value="Shoes">נעליים</option>
-                    <option value="Accessories">אקססוריז</option>
-                </InputSelect>
-            </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">:בחר סוג פריט</label>
+                        <InputSelect id="category" class="form-select" @bind-Value="clothingItem.Category">
+                            <option value="">בחר...</option>
+                            <option value="Shirt">חולצה</option>
+                            <option value="Pants">מכנסיים</option>
+                            <option value="Skirt">חצאית</option>
+                            <option value="Dress">שמלה</option>
+                            <option value="TankTop">גופייה</option>
+                            <option value="Cardigan">עליונית</option>
+                            <option value="Jacket">גקט</option>
+                            <option value="Bag">תיק</option>
+                            <option value="Shoes">נעליים</option>
+                            <option value="Accessories">אקססוריז</option>
+                        </InputSelect>
+                    </div>
 
-            <!-- בחירת עונה -->
-            <div class="form-group">
-                <label for="season">:בחר עונה</label>
-                <InputSelect id="season" @bind-Value="clothingItem.Season">
-                    <option value="Summer">קיץ</option>
-                    <option value="Winter">חורף</option>
-                </InputSelect>
-            </div>
+                    <div class="mb-3">
+                        <label for="season" class="form-label">:בחר עונה</label>
+                        <InputSelect id="season" class="form-select" @bind-Value="clothingItem.Season">
+                            <option value="">בחר...</option>
+                            <option value="Summer">קיץ</option>
+                            <option value="Winter">חורף</option>
+                        </InputSelect>
+                    </div>
 
-            <!-- בחירת שימוש -->
-            <div class="form-group">
-                <label for="usageType">:בחר סוג שימוש</label>
-                <InputSelect id="usageType" @bind-Value="clothingItem.UsageType">
-                    <option value="Casual">יום-יומי</option>
-                    <option value="Festive">חגיגי</option>
-                </InputSelect>
-            </div>
+                    <div class="mb-3">
+                        <label for="usageType" class="form-label">:בחר סוג שימוש</label>
+                        <InputSelect id="usageType" class="form-select" @bind-Value="clothingItem.UsageType">
+                            <option value="">בחר...</option>
+                            <option value="Casual">יום-יומי</option>
+                            <option value="Festive">חגיגי</option>
+                        </InputSelect>
+                    </div>
 
-            <!-- בחירת צבע -->
-            <div class="form-group">
-                <label for="color">:בחר צבע</label>
-                <InputSelect id="color" @bind-Value="clothingItem.ColorName">
-                    <option value="Red">Red</option>
-                    <option value="Blue">Blue</option>
-                    <option value="Green">Green</option>
-                    <option value="Yellow">Yellow</option>
-                    <option value="Black">Black</option>
-                    <option value="White">White</option>
-                </InputSelect>
-            </div>
+                    <div class="mb-3">
+                        <label for="color" class="form-label">:בחר צבע</label>
+                        <InputSelect id="color" class="form-select" @bind-Value="clothingItem.ColorName">
+                            <option value="">בחר...</option>
+                            <option value="Red">אדום</option>
+                            <option value="Blue">כחול</option>
+                            <option value="Green">ירוק</option>
+                            <option value="Yellow">צהוב</option>
+                            <option value="Black">שחור</option>
+                            <option value="White">לבן</option>
+                        </InputSelect>
+                    </div>
 
-            <!-- בחירת מספר שימושים לפני כביסה -->
-            <div class="form-group">
-                <label for="washAfterUses">?כל כמה שימושים לכבס את הפריט</label>
-                <InputSelect id="washAfterUses" @bind-Value="clothingItem.WashAfterUses">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                </InputSelect>
-            </div>
+                    <div class="mb-4">
+                        <label for="washAfterUses" class="form-label">?כל כמה שימושים לכבס את הפריט</label>
+                        <InputSelect id="washAfterUses" class="form-select" @bind-Value="clothingItem.WashAfterUses">
+                            <option value="">בחר...</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </InputSelect>
+                    </div>
 
-            <button type="submit" class="btn pink-btn">העלה פריט</button>
-        </EditForm>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-pink btn-lg">המשך לשלב הבא</button>
+                    </div>
+                </EditForm>
+            }
+            else if (!isComplete)
+            {
+                <h5 class="text-muted mb-4 text-center">מעולה! עכשיו רק נותר להעלות תמונה של הפריט</h5>
+                <div class="text-center">
+                    <InputFile OnChange="HandleFileSelected" class="form-control mb-3" />
+                    <button class="btn btn-pink" @onclick="HandleUploadImage">העלה תמונה</button>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-success text-center mt-3">
+                    <h5>✨ הפריט הוסף לארון בהצלחה!</h5>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
 <style>
-    .center-page {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 20px;
-    }
-
-    h1 {
-        font-size: 3rem;
-        margin-bottom: 30px;
-    }
-
-    .form-container {
-        width: 100%;
-        max-width: 600px;
-        background-color: #f9f9f9;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-        text-align: right;
-    }
-
-    label {
-        display: block;
-        font-weight: bold;
-        margin-bottom: 5px;
-        text-align: right;
-    }
-
-    select, input, .file-upload {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        box-sizing: border-box;
-        text-align: right;
-    }
-
-    .btn {
-        font-size: 1.2rem;
-        padding: 15px 30px;
+    .btn-pink {
+        background-color: #ec87b8;
         border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 10px;
-        transition: background-color 0.3s ease, transform 0.2s ease;
-    }
-
-    .pink-btn {
-        background-color: #ff69b4;
         color: white;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease-in-out;
     }
 
-        .pink-btn:hover {
-            background-color: #ff1493;
-            transform: scale(1.05);
+        .btn-pink:hover {
+            background-color: #f69dc6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(236, 135, 184, 0.3);
         }
 </style>
-
 @code {
     private ClothingItem clothingItem = new ClothingItem();
     private IBrowserFile selectedFile;
+    // משתנה לקבלת מזהה המשתמש המחובר – יש לממש בהתאם למערכת האימות שלך
+    private int currentUserId = 1; // לדוגמה, להחליף בערך אמיתי
+    private bool isStep1Completed = false;
+    private bool isComplete = false;
 
-    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    // שלב 1: טיפול בהגשת הטופס עם המאפיינים (ללא תמונה)
+    private async Task HandleStep1Submit()
     {
-        selectedFile = e.File;
+        // עדכון UserID מהמשתמש המחובר
+        clothingItem.UserID = currentUserId;
+        // DateAdded יתמלא אוטומטית, אפשר גם לקבוע כאן:
+        clothingItem.DateAdded = DateTime.Now;
+        // IsWashed כברירת מחדל false
+        clothingItem.IsWashed = false;
+
+        // אם יש lookup לטבלת Colors – כאן ניתן לבצע חיפוש לקבלת ColorID לפי ColorName
+        // לדוגמה: clothingItem.ColorID = await GetColorIdFromColorName(clothingItem.ColorName);
+
+        // הוספת הפריט ללא תמונה, וכך יווצר ItemID
+        var response = await Http.PostAsJsonAsync("https://localhost:5177/api/clothingitems/addClothingItemAttributes", clothingItem);
+        if (response.IsSuccessStatusCode)
+        {
+            // נניח שה-API מחזיר את ה-ItemID החדש
+            clothingItem.ItemID = await response.Content.ReadFromJsonAsync<int>();
+            isStep1Completed = true;
+        }
+        else
+        {
+            Console.WriteLine("Error adding clothing item attributes");
+        }
     }
 
-    private async Task HandleValidSubmit()
+    // שלב 2: טיפול בבחירת התמונה והעלאתה
+    private async Task HandleUploadImage()
     {
         if (selectedFile != null)
         {
             var content = new MultipartFormDataContent();
-            content.Add(new StringContent("1"), "UserID"); // ✨ צריך לשנות ל-ID אמיתי של משתמש
-            content.Add(new StringContent(clothingItem.Category), "Category");
-            content.Add(new StringContent(clothingItem.ColorName), "ColorID");
-            content.Add(new StringContent(clothingItem.Season), "Season");
-            content.Add(new StringContent(clothingItem.WashAfterUses.ToString()), "WashAfterUses");
-            content.Add(new StringContent(clothingItem.UsageType), "UsageType");
-            content.Add(new StringContent(clothingItem.IsWashed.ToString()), "IsWashed");
+            // שליחת UserID, ItemID ועוד אם נדרש – כאן חשוב לשלוח את ItemID שקיבלנו
+            content.Add(new StringContent(clothingItem.ItemID.ToString()), "ItemID");
 
             var fileContent = new StreamContent(selectedFile.OpenReadStream());
             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType);
-            content.Add(fileContent, "Image", selectedFile.Name);
+            // השדה שנשלח צריך להתאים לשם המצופה ב-API (לדוגמה, "imageFile")
+            content.Add(fileContent, "imageFile", selectedFile.Name);
 
-            var response = await Http.PostAsync("https://localhost:5177/api/clothingitems/add", content);
-
+            var response = await Http.PostAsync("https://localhost:5177/api/clothingitems/uploadImageForItem", content);
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine("Item uploaded successfully!");
-                Navigation.NavigateTo("/home");
+                isComplete = true;
             }
             else
             {
-                Console.WriteLine("Error uploading item");
+                Console.WriteLine("Error uploading image");
             }
         }
     }
-}
 
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+}

@@ -9,39 +9,46 @@
 @using MySql.Data.MySqlClient
 @using System.Diagnostics
 
-<div class="center-page">
-    <h1>תכנון אאוטפיט לפי נושא</h1>
+<div class="container py-5 text-center" style="max-width: 600px;">
+    <h2 class="fw-bold text-pink mb-4">✨ תכנון אאוטפיט לפי נושא</h2>
+    <p class="text-muted small mb-5">בחרי עונה וסגנון, ונתאים לך פריטים מושלמים</p>
 
-    <div class="form-container">
-        <EditForm Model="@outfitSelection" OnValidSubmit="HandleValidSubmit">
-            <DataAnnotationsValidator />
-            <ValidationSummary />
+    <EditForm Model="@outfitSelection" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
 
-            <!-- שאלת עונה -->
-            <div class="form-group">
-                <label for="season">בחר עונה:</label>
-                <InputSelect id="season" @bind-Value="outfitSelection.Season">
-                    <option value="1">קיץ</option>
-                    <option value="2">חורף</option>
-                </InputSelect>
-            </div>
+        <div class="mb-4 text-end" dir="rtl">
+            <label for="season" class="form-label fw-semibold">בחר עונה:</label>
+            <InputSelect id="season" class="form-select" @bind-Value="outfitSelection.Season">
+                <option value="1">קיץ</option>
+                <option value="2">חורף</option>
+            </InputSelect>
+        </div>
 
-            <!-- שאלת סגנון -->
-            <div class="form-group">
-                <label for="style">בחר סגנון:</label>
-                <InputSelect id="style" @bind-Value="outfitSelection.Style">
-                    <option value="1">חולצה ומכנס</option>
-                    <option value="2">חצאית וגופייה</option>
-                    <option value="3">שמלה</option>
-                </InputSelect>
-            </div>
+        <div class="mb-4 text-end" dir="rtl">
+            <label for="style" class="form-label fw-semibold">בחר סגנון:</label>
+            <InputSelect id="style" class="form-select" @bind-Value="outfitSelection.Style">
+                <option value="1">חולצה ומכנס</option>
+                <option value="2">חצאית וגופייה</option>
+                <option value="3">שמלה</option>
+            </InputSelect>
+        </div>
 
-            <!-- כפתור שליחה -->
-            <button type="submit" class="btn pink-btn">המשך לתכנון</button>
-        </EditForm>
-    </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-sm px-4 py-2 rounded-pill" style="background-color: #f4b6c2; color: white; font-weight: 600;">
+                המשך לתכנון
+            </button>
+        </div>
+    </EditForm>
+
+    @if (outfitSelection.IsOutfitComplete)
+    {
+        <div class="mt-5 bg-light rounded-4 p-4 shadow-sm">
+            <h5 class="text-pink fw-bold mb-3">💖 השלב הבא: בחירת פריטים</h5>
+            <p class="text-muted small">(כאן תוצג רשימת הפריטים המתאימים לסגנון שבחרת)</p>
+        </div>
+    }
 </div>
-
 @if (outfitSelection.IsOutfitComplete)
 {
     <h4>השלב הבא: בחירת פריטים</h4>
@@ -170,7 +177,6 @@
                             {
                                 ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
                                 Category = reader.GetString(reader.GetOrdinal("Category")),
-                                ImageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader["ImageData"]
                             };
 
                         items.Add(item);

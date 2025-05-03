@@ -57,7 +57,7 @@ namespace API.Services
                                 Category = reader.GetString(reader.GetOrdinal("Category")),
                                 ColorID = reader.GetInt32(reader.GetOrdinal("ColorID")),
                                 Season = reader.GetString(reader.GetOrdinal("Season")),
-                                ImageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader["ImageData"],
+                                ImageID = reader.IsDBNull(reader.GetOrdinal("ImageID")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("ImageID")),
                                 DateAdded = reader.IsDBNull(reader.GetOrdinal("DateAdded")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("DateAdded")),
                                 LastWornDate = reader.IsDBNull(reader.GetOrdinal("LastWornDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("LastWornDate")),
                                 WashAfterUses = reader.GetInt32(reader.GetOrdinal("WashAfterUses")),
@@ -87,7 +87,6 @@ namespace API.Services
                     command.Parameters.AddWithValue("@Category", item.Category);
                     command.Parameters.AddWithValue("@ColorID", item.ColorID);
                     command.Parameters.AddWithValue("@Season", item.Season);
-                    command.Parameters.AddWithValue("@ImageData", item.ImageData);
                     command.Parameters.AddWithValue("@DateAdded", item.DateAdded ?? DateTime.Now);
                     command.Parameters.AddWithValue("@WashAfterUses", item.WashAfterUses);
 

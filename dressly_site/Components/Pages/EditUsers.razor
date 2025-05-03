@@ -44,18 +44,18 @@
         border-collapse: collapse;
     }
 
-    .table th {
-        background-color: #F8E1E7; /* ורוד פסטלי */
-        color: #333;
-        padding: 12px;
-        text-align: center;
-    }
+        .table th {
+            background-color: #F8E1E7; /* ורוד פסטלי */
+            color: #333;
+            padding: 12px;
+            text-align: center;
+        }
 
-    .table td {
-        padding: 12px;
-        text-align: center;
-        border-bottom: 1px solid #ddd;
-    }
+        .table td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
 
     .badge {
         padding: 5px 10px;
@@ -82,9 +82,9 @@
         transition: 0.3s;
     }
 
-    .btn-delete:hover {
-        background-color: #C0392B;
-    }
+        .btn-delete:hover {
+            background-color: #C0392B;
+        }
 </style>
 
 <h3>🔧 ניהול משתמשים</h3>
@@ -147,7 +147,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        nonAdminCount = (await Http.GetFromJsonAsync<Dictionary<string, int>>("api/Admin/non-admin-count"))["nonAdminUsersCount"];
+        nonAdminCount = (await Http.GetFromJsonAsync<Dictionary<string, int>>("api/Admin/non-admin-count"))["NonAdminUsersCount"];
         users = await Http.GetFromJsonAsync<List<UserInfoModel>>("api/Admin/GetAllUsers");
         filteredUsers = new List<UserInfoModel>(users);
     }
