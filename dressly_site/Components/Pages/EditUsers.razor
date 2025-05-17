@@ -171,7 +171,8 @@ else
 
     private async Task DeleteUser(int userId)
     {
-        var response = await Http.DeleteAsync($"api/Admin/{userId}");
+        var response = await Http.DeleteAsync($"api/Admin/user/{userId}");
+        ;
 
         if (response.IsSuccessStatusCode)
         {
