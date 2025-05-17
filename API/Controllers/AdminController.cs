@@ -156,6 +156,41 @@ namespace API.Controllers
                 return StatusCode(500, new { Message = "שגיאה בטעינת נתוני סטטיסטיקה", Error = ex.Message });
             }
         }
+
+        [HttpGet("most-popular-item")]
+        public async Task<ActionResult<PopularItem>> GetMostPopularItem()
+        {
+            var query = @"
+        SELECT Category, ColorName, COUNT(*) AS ItemCount
+        FROM clothingitems
+        GROUP BY Category, ColorName
+        ORDER BY ItemCount DESC
+        LIMIT 1;
+    ";
+
+            var connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+            using var connection = new MySqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            using var cmd = new MySqlCommand(query, connection);
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                var item = new PopularItem
+                {
+                    Category = reader.GetString("Category"),
+                    ColorName = reader.GetString("ColorName"),
+                    ItemCount = reader.GetInt32("ItemCount")
+                };
+
+                return Ok(item);
+            }
+
+            return NotFound();
+        }
+
     }
 }
 

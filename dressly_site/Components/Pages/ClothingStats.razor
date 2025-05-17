@@ -1,5 +1,6 @@
 ﻿@page "/clothing-stats"
 @inject HttpClient Http
+@using ClassLibrary1.Models
 
 <style>
     body {
@@ -75,6 +76,12 @@
             <span class="stat-label">🧥 אאוטפיטים שנשמרו</span>
             <span class="stat-value">@totalOutfits</span>
         </div>
+        <div class="stat-item">
+            <span class="stat-label">👑 הפריט הכי פופולרי</span>
+            <span class="stat-value">
+                @((mostPopularItem != null) ? $"{mostPopularItem.Category} ({mostPopularItem.ColorName}) – {mostPopularItem.ItemCount} פעמים" : "אין נתונים")
+            </span>
+        </div>
     }
 </div>
 
@@ -83,6 +90,8 @@
     private int totalClothingItems;
     private int totalOutfits;
     private bool loading = true;
+
+    private PopularItem mostPopularItem;
 
     protected override async Task OnInitializedAsync()
     {
@@ -93,6 +102,8 @@
             totalUsers = json.GetProperty("totalUsers").GetInt32();
             totalClothingItems = json.GetProperty("totalClothingItems").GetInt32();
             totalOutfits = json.GetProperty("totalOutfits").GetInt32();
+
+            await LoadMostPopularItem();
         }
         catch (Exception ex)
         {
@@ -100,5 +111,17 @@
         }
 
         loading = false;
+    }
+
+    private async Task LoadMostPopularItem()
+    {
+        try
+        {
+            mostPopularItem = await Http.GetFromJsonAsync<PopularItem>("api/admin/most-popular-item");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("שגיאה בטעינת הפריט הפופולרי ביותר: " + ex.Message);
+        }
     }
 }
