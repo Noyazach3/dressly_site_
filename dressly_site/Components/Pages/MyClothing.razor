@@ -37,6 +37,13 @@
                             @onclick="() => ToggleFavorite(item)">
                         @(favoriteItemIds.Contains(item.ItemID) ? "💔 הסר ממועדפים" : "💖 הוסף למועדפים")
                     </button>
+
+                    <button class="btn btn-sm rounded-pill mt-2 me-1"
+                            style="background-color: #dc3545; color: white;"
+                            @onclick="() => DeleteItem(item.ItemID)">
+                        🗑 מחק
+                    </button>
+
                 </div>
             </div>
         </div>
@@ -113,5 +120,39 @@
             if (response.IsSuccessStatusCode)
                 favoriteItemIds.Remove(item.ItemID);
         }
+
+
     }
+
+    private async Task DeleteItem(int itemId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "האם את בטוח/ה שתרצה למחוק את הפריט?");
+
+        if (!confirmed) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/clothingitems/{itemId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                allItems.RemoveAll(i => i.ItemID == itemId);
+                itemIdToImageId.Remove(itemId);
+                favoriteItemIds.Remove(itemId);
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"❌ שגיאה במחיקת פריט: {await response.Content.ReadAsStringAsync()}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ שגיאה כללית במחיקת פריט: {ex.Message}");
+        }
+    }
+
+
+
+
 }

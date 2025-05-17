@@ -78,7 +78,7 @@
     private List<ClothingItem> clothingItems = new();
     private Dictionary<int, string> imageCache = new();
 
-    private List<string> categories = new() { "Shirt", "Pants", "Skirt", "Dress", "Shoes", "Accessories" };
+    private List<string> categories = new() { "Shirt", "Pants", "Skirt", "Dress", "Shoes", "Jacket", "Accessories" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -189,6 +189,8 @@
         "Dress" => "שמלה",
         "Shoes" => "נעליים",
         "Accessories" => "אקססוריז",
+        "Jacket" => "גקט",
+
         _ => category
     };
 

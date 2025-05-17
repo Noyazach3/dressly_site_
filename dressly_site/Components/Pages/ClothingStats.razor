@@ -3,74 +3,102 @@
 
 <style>
     body {
-        background-color: #FAF3F0; /* רקע שמנתי */
-        font-family: 'Arial', sans-serif;
+        background-color: #f4f6f9;
+        font-family: 'Segoe UI', sans-serif;
     }
 
     .stats-container {
-        width: 60%;
-        margin: auto;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 30px;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
         text-align: center;
-        padding: 20px;
-        background-color: #FFFFFF;
-        border-radius: 15px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
     }
 
-    .progress {
-        height: 20px;
-        border-radius: 10px;
-    }
-
-    .progress-bar {
-        background-color: #F28D9E; /* ורוד פסטלי */
+    .stats-title {
+        font-size: 1.8rem;
         font-weight: bold;
+        color: #333333;
+        margin-bottom: 25px;
+    }
+
+    .stat-item {
+        padding: 20px;
+        margin-bottom: 15px;
+        background-color: #f0f2f5;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        color: #333;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .stat-label {
+        font-weight: 600;
+        color: #555;
+    }
+
+    .stat-value {
+        font-weight: bold;
+        font-size: 1.3rem;
+        color: #007bff;
+    }
+
+    .loader {
+        color: #888;
+        font-style: italic;
     }
 </style>
 
 <div class="stats-container">
-    <h3 class="fw-bold text-dark">📊 סטטיסטיקות בגדים</h3>
+    <div class="stats-title">📊 סטטיסטיקות כלליות</div>
 
-    @if (clothingStats == null)
+    @if (loading)
     {
-        <p class="text-muted">🔄 טוען נתונים...</p>
+        <div class="loader">טוען נתונים...</div>
     }
     else
     {
-        <p class="fw-semibold fs-5">👕 סה"כ בגדים בארון: <span class="badge bg-primary">@clothingStats.TotalClothingItems</span></p>
-
-        <h4 class="mt-4">📌 קטגוריות פופולריות:</h4>
-
-        @foreach (var category in clothingStats.PopularCategories)
-        {
-            int percentage = (int)((double)category.Count / clothingStats.TotalClothingItems * 100);
-            <div class="mb-2">
-                <p class="mb-1 fw-bold">@category.Category - @category.Count פריטים</p>
-                <div class="progress">
-                    <div class="progress-bar" role="progressbar" style="width: @percentage%;" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100">@percentage%</div>
-                </div>
-            </div>
-        }
+        <div class="stat-item">
+            <span class="stat-label">👤 משתמשים רשומים</span>
+            <span class="stat-value">@totalUsers</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">👕 בגדים שהועלו</span>
+            <span class="stat-value">@totalClothingItems</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">🧥 אאוטפיטים שנשמרו</span>
+            <span class="stat-value">@totalOutfits</span>
+        </div>
     }
 </div>
 
 @code {
-    private ClothingStatsResponse clothingStats;
+    private int totalUsers;
+    private int totalClothingItems;
+    private int totalOutfits;
+    private bool loading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        clothingStats = await Http.GetFromJsonAsync<ClothingStatsResponse>("api/Clothing/stats");
-    }
+        try
+        {
+            var json = await Http.GetFromJsonAsync<System.Text.Json.JsonElement>("api/admin/general");
 
-    private class ClothingStatsResponse
-    {
-        public int TotalClothingItems { get; set; }
-        public List<CategoryCount> PopularCategories { get; set; }
-    }
+            totalUsers = json.GetProperty("totalUsers").GetInt32();
+            totalClothingItems = json.GetProperty("totalClothingItems").GetInt32();
+            totalOutfits = json.GetProperty("totalOutfits").GetInt32();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ שגיאה בטעינת נתוני סטטיסטיקה: {ex.Message}");
+        }
 
-    private class CategoryCount
-    {
-        public string Category { get; set; }
-        public int Count { get; set; }
+        loading = false;
     }
 }

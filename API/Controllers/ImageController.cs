@@ -17,8 +17,6 @@ namespace API.Controllers
         {
             _configuration = configuration;
         }
-
-        // GET: api/image/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetImage(int id)
         {
@@ -26,34 +24,30 @@ namespace API.Controllers
 
             try
             {
-                using (var connection = new MySqlConnection(connectionString))
+                using var connection = new MySqlConnection(connectionString);
+                await connection.OpenAsync();
+
+                string query = "SELECT ImageData, ImageType FROM images WHERE ImageID = @ImageID";
+                using var command = new MySqlCommand(query, connection);
+                command.Parameters.AddWithValue("@ImageID", id);
+
+                using var reader = await command.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
                 {
-                    await connection.OpenAsync();
+                    byte[] imageData = (byte[])reader["ImageData"];
+                    string imageType = reader.IsDBNull(reader.GetOrdinal("ImageType")) ? "image/jpeg" : reader.GetString(reader.GetOrdinal("ImageType"));
 
-                    string query = "SELECT ImageData, ImageType FROM images WHERE ImageID = @ImageID";
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@ImageID", id);
-
-                        using var reader = await command.ExecuteReaderAsync();
-                        if (await reader.ReadAsync())
-                        {
-                            byte[] imageData = (byte[])reader["ImageData"];
-                            string imageType = reader["ImageType"].ToString();
-
-                            return File(imageData, imageType);
-                        }
-                        else
-                        {
-                            return NotFound(); // אם אין תמונה עם מזהה כזה
-                        }
-                    }
+                    return File(imageData, imageType);
                 }
+
+                return NotFound();
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "Error retrieving image", Error = ex.Message });
             }
         }
+
+
     }
 }

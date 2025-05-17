@@ -1,12 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using API.Services;
-using ClassLibrary1.Services;
-using ClassLibrary1.Models;
 using MySql.Data.MySqlClient;
-using System.Data;
 using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading.Tasks;
+using ClassLibrary1.Models;
 
 namespace API.Controllers
 {
@@ -14,21 +12,13 @@ namespace API.Controllers
     [ApiController]
     public class AdminController : ControllerBase
     {
-        private readonly IAdminService _adminService;
-        private readonly LoginSession _loginSession;
+        private readonly IConfiguration _configuration;
         private readonly string _connectionString;
 
-        public AdminController(IAdminService adminService, LoginSession loginSession, IConfiguration configuration)
+        public AdminController(IConfiguration configuration)
         {
-            _adminService = adminService;
-            _loginSession = loginSession;
+            _configuration = configuration;
             _connectionString = configuration.GetConnectionString("DefaultConnection");
-        }
-
-        private string GetUserRole()
-        {
-            Console.WriteLine($"🔍 GetUserRole() מחזיר: {_loginSession.Role}");
-            return _loginSession.Role;
         }
 
         [HttpGet("GetAllUsers")]
@@ -56,72 +46,120 @@ namespace API.Controllers
             return Ok(users);
         }
 
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUser(int id)
+        // ✅ 2. מחיקת משתמש לפי ID (כולל תמונות, בגדים, אאוטפיטים, מועדפים)
+        [HttpDelete("user/{userId}")]
+        public async Task<IActionResult> DeleteUser(int userId)
         {
             using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync();
-
             using var transaction = await connection.BeginTransactionAsync();
+
             try
             {
-                // מחיקת נתוני המשתמש מטבלאות קשורות
-                var deleteFromOutfits = "DELETE FROM outfits WHERE UserID = @UserID";
-                using var outfitsCommand = new MySqlCommand(deleteFromOutfits, connection, transaction);
-                outfitsCommand.Parameters.AddWithValue("@UserID", id);
-                await outfitsCommand.ExecuteNonQueryAsync();
+                // מחיקת אאוטפיטים
+                var deleteOutfits = @"
+                    DELETE FROM outfititems WHERE OutfitID IN (SELECT OutfitID FROM outfits WHERE UserID = @UserID);
+                    DELETE FROM outfits WHERE UserID = @UserID;";
+                using var cmd1 = new MySqlCommand(deleteOutfits, connection, (MySqlTransaction)transaction);
+                cmd1.Parameters.AddWithValue("@UserID", userId);
+                await cmd1.ExecuteNonQueryAsync();
 
-                var deleteFromClothingItems = "DELETE FROM clothingitems WHERE UserID = @UserID";
-                using var clothingItemsCommand = new MySqlCommand(deleteFromClothingItems, connection, transaction);
-                clothingItemsCommand.Parameters.AddWithValue("@UserID", id);
-                await clothingItemsCommand.ExecuteNonQueryAsync();
+                // מחיקת תמונות של הבגדים של המשתמש
+                var deleteImages = "DELETE FROM images WHERE OwnerID IN (SELECT ItemID FROM clothingitems WHERE UserID = @UserID)";
+                using var cmd2 = new MySqlCommand(deleteImages, connection, (MySqlTransaction)transaction);
+                cmd2.Parameters.AddWithValue("@UserID", userId);
+                await cmd2.ExecuteNonQueryAsync();
 
-                var deleteFromFavorites = "DELETE FROM favorites WHERE UserID = @UserID";
-                using var favoritesCommand = new MySqlCommand(deleteFromFavorites, connection, transaction);
-                favoritesCommand.Parameters.AddWithValue("@UserID", id);
-                await favoritesCommand.ExecuteNonQueryAsync();
+                // מחיקת בגדים
+                var deleteClothes = "DELETE FROM clothingitems WHERE UserID = @UserID";
+                using var cmd3 = new MySqlCommand(deleteClothes, connection, (MySqlTransaction)transaction);
+                cmd3.Parameters.AddWithValue("@UserID", userId);
+                await cmd3.ExecuteNonQueryAsync();
 
-                var deleteFromEvents = "DELETE FROM events WHERE UserID = @UserID";
-                using var eventsCommand = new MySqlCommand(deleteFromEvents, connection, transaction);
-                eventsCommand.Parameters.AddWithValue("@UserID", id);
-                await eventsCommand.ExecuteNonQueryAsync();
+                // מחיקת מועדפים
+                var deleteFavorites = "DELETE FROM favorites WHERE UserID = @UserID";
+                using var cmd4 = new MySqlCommand(deleteFavorites, connection, (MySqlTransaction)transaction);
+                cmd4.Parameters.AddWithValue("@UserID", userId);
+                await cmd4.ExecuteNonQueryAsync();
 
                 // מחיקת המשתמש עצמו
-                var deleteUserQuery = "DELETE FROM Users WHERE UserID = @UserID";
-                using var deleteUserCommand = new MySqlCommand(deleteUserQuery, connection, transaction);
-                deleteUserCommand.Parameters.AddWithValue("@UserID", id);
-                var rowsAffected = await deleteUserCommand.ExecuteNonQueryAsync();
+                var deleteUser = "DELETE FROM users WHERE UserID = @UserID";
+                using var cmd5 = new MySqlCommand(deleteUser, connection, (MySqlTransaction)transaction);
+                cmd5.Parameters.AddWithValue("@UserID", userId);
+                await cmd5.ExecuteNonQueryAsync();
 
-                if (rowsAffected > 0)
-                {
-                    await transaction.CommitAsync();
-                    return NoContent();
-                }
-                return NotFound("המשתמש לא נמצא.");
+                await transaction.CommitAsync();
+                return Ok("המשתמש נמחק בהצלחה.");
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                Console.WriteLine($"❌ שגיאה במהלך מחיקת המשתמש: {ex.Message}");
-                return StatusCode(500, "שגיאה במהלך מחיקת המשתמש.");
+                return StatusCode(500, new { Message = "❌ שגיאה במחיקת המשתמש", Error = ex.Message });
             }
         }
 
+        // ✅ 3. החזרת כמות משתמשים שאינם אדמין
         [HttpGet("non-admin-count")]
         public async Task<IActionResult> GetNonAdminUsersCount()
         {
-            int nonAdminCount = 0;
             using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync();
 
-            var query = "SELECT COUNT(*) FROM Users WHERE Role != @Role";
+            var query = "SELECT COUNT(*) FROM users WHERE Role != 'Admin'";
             using var command = new MySqlCommand(query, connection);
-            command.Parameters.AddWithValue("@Role", "Admin");
+            var count = Convert.ToInt32(await command.ExecuteScalarAsync());
 
-            nonAdminCount = Convert.ToInt32(await command.ExecuteScalarAsync());
+            return Ok(new { NonAdminUsersCount = count });
+        }
 
-            return Ok(new { NonAdminUsersCount = nonAdminCount });
+        [HttpGet("general")]
+        public async Task<IActionResult> GetGeneralStats()
+        {
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+            try
+            {
+                int totalUsers = 0;
+                int totalClothingItems = 0;
+                int totalOutfits = 0;
+
+                using var connection = new MySqlConnection(connectionString);
+                await connection.OpenAsync();
+
+                // ספירת משתמשים
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM users", connection))
+                {
+                    totalUsers = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                // ספירת פריטי לבוש
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM clothingitems", connection))
+                {
+                    totalClothingItems = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                // ספירת אאוטפיטים
+                using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM outfits", connection))
+                {
+                    totalOutfits = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                return Ok(new
+                {
+                    totalUsers,
+                    totalClothingItems,
+                    totalOutfits
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "שגיאה בטעינת נתוני סטטיסטיקה", Error = ex.Message });
+            }
         }
     }
 }
+
+
+
+   
+

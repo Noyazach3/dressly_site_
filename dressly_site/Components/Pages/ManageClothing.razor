@@ -4,7 +4,7 @@
 
 <style>
     body {
-        background-color: #FAF3F0; /* רקע שמנתי */
+        background-color: #FAF3F0;
         font-family: 'Arial', sans-serif;
     }
 
@@ -25,7 +25,7 @@
     }
 
         .table th {
-            background-color: #F8E1E7; /* ורוד פסטלי */
+            background-color: #F8E1E7;
             color: #333;
             padding: 12px;
             text-align: center;
@@ -42,11 +42,11 @@
             height: 60px;
             border-radius: 10px;
             object-fit: cover;
-            border: 2px solid #F28D9E; /* ורוד עדין */
+            border: 2px solid #F28D9E;
         }
 
     .btn-delete {
-        background-color: #F28D9E; /* ורוד פסטלי */
+        background-color: #F28D9E;
         color: white;
         padding: 6px 12px;
         border-radius: 6px;
@@ -63,12 +63,12 @@
         padding: 6px 10px;
         border-radius: 15px;
         font-weight: bold;
-        background-color: #D4A5A5; /* ורוד רך */
+        background-color: #D4A5A5;
         color: white;
     }
 </style>
 
-<h3 class="text-center fw-bold my-4">👕 ניהול בגדים</h3>
+<h3 class="text-center fw-bold my-4">👕 ניהול כל פריטי הלבוש במערכת</h3>
 
 @if (clothingItems == null)
 {
@@ -76,7 +76,7 @@
 }
 else if (!clothingItems.Any())
 {
-    <p class="text-center text-danger fw-semibold">❌ אין פרטי לבוש להצגה</p>
+    <p class="text-center text-danger fw-semibold">❌ אין בגדים להצגה</p>
 }
 else
 {
@@ -84,6 +84,7 @@ else
         <table class="table table-hover table-striped text-center align-middle">
             <thead>
                 <tr>
+                    <th>משתמש</th>
                     <th>קטגוריה</th>
                     <th>צבע</th>
                     <th>עונה</th>
@@ -95,13 +96,18 @@ else
                 @foreach (var item in clothingItems)
                 {
                     <tr>
+                        <td>@item.UserID</td>
                         <td>@item.Category</td>
-                        <td><span class="badge badge-color">@item.ColorID</span></td>
+                        <td><span class="badge badge-color">@item.ColorName</span></td>
                         <td>@item.Season</td>
                         <td>
-                            @if (item.ImageID.HasValue && imageCache.ContainsKey(item.ItemID))
+                            @if (item.ImageID.HasValue)
                             {
-                                <img src="@($"data:image/jpeg;base64,{imageCache[item.ItemID]}")" alt="תמונה" />
+                                <img src="@($"http://localhost:5177/api/image/{item.ImageID.Value}")" alt="תמונה" />
+                            }
+                            else
+                            {
+                                <span class="text-muted small">אין תמונה</span>
                             }
                         </td>
                         <td>
@@ -116,34 +122,22 @@ else
 
 @code {
     private List<ClothingItem> clothingItems = new();
-    // מילון לאחסון נתוני תמונה (Base64) כאשר המפתח הוא ItemID
-    private Dictionary<int, string> imageCache = new();
 
     protected override async Task OnInitializedAsync()
     {
-        clothingItems = await Http.GetFromJsonAsync<List<ClothingItem>>("api/Clothing/user/1"); // שנה ל-ID אמיתי
-        await LoadImages();
-    }
-
-    private async Task LoadImages()
-    {
-        // עבור כל פריט שיש לו ImageID, טען את נתוני התמונה והמר אותם ל-Base64, ואחסן במילון
-        foreach (var item in clothingItems)
+        try
         {
-            if (item.ImageID.HasValue)
-            {
-                var imageData = await GetImageData(item.ImageID.Value);
-                if (imageData != null)
-                {
-                    imageCache[item.ItemID] = Convert.ToBase64String(imageData);
-                }
-            }
+            clothingItems = await Http.GetFromJsonAsync<List<ClothingItem>>("api/clothingitems");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ שגיאה בטעינת בגדים: {ex.Message}");
         }
     }
 
     private async Task DeleteClothingItem(int itemId)
     {
-        var response = await Http.DeleteAsync($"api/Clothing/{itemId}");
+        var response = await Http.DeleteAsync($"api/clothingitems/{itemId}");
 
         if (response.IsSuccessStatusCode)
         {
@@ -153,22 +147,6 @@ else
         else
         {
             Console.WriteLine($"❌ שגיאה במחיקת פריט: {await response.Content.ReadAsStringAsync()}");
-        }
-    }
-
-    // פונקציה לשליפת תמונת פריט מתוך ה-API (נניח שיש API שמחזיר את ImageData)
-    private async Task<byte[]> GetImageData(int imageId)
-    {
-        // כאן ניתן לבצע קריאה ל-API שמחזיר את ImageData לפי ImageID
-        // דוגמה: "api/Image/{imageId}"
-        try
-        {
-            return await Http.GetFromJsonAsync<byte[]>($"api/Image/{imageId}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting image data: {ex.Message}");
-            return null;
         }
     }
 }

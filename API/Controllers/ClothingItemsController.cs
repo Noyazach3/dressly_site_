@@ -35,9 +35,8 @@ namespace API.Controllers
                 {
                     await connection.OpenAsync();
                     string query = @"
-                SELECT c.ItemID, c.UserID, c.Category, c.ColorID, c.Season, c.DateAdded, c.LastWornDate, 
-                       c.WashAfterUses, c.UsageType, c.ColorName, c.IsWashed, c.ImageID
-                FROM clothingitems c";
+            SELECT c.ItemID, c.UserID, c.Category, c.Season, c.UsageType, c.ColorName, c.ImageID
+            FROM clothingitems c";
 
                     using (var command = new MySqlCommand(query, connection))
                     using (var reader = await command.ExecuteReaderAsync())
@@ -47,26 +46,27 @@ namespace API.Controllers
                             var item = new ClothingItem
                             {
                                 ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
-                                Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? string.Empty : reader.GetString(reader.GetOrdinal("Category")),
-                                Season = reader.IsDBNull(reader.GetOrdinal("Season")) ? string.Empty : reader.GetString(reader.GetOrdinal("Season")),
-                                UsageType = reader.IsDBNull(reader.GetOrdinal("UsageType")) ? string.Empty : reader.GetString(reader.GetOrdinal("UsageType")),
-                                Color = reader.IsDBNull(reader.GetOrdinal("ColorName"))
-                                    ? new ClassLibrary1.Models.Color()
-                                    : new ClassLibrary1.Models.Color { ColorName = reader.GetString(reader.GetOrdinal("ColorName")) },
-                                ImageID = reader.IsDBNull(reader.GetOrdinal("ImageID")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("ImageID")),
-                                DateAdded = reader.IsDBNull(reader.GetOrdinal("DateAdded")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("DateAdded")),
-                                LastWornDate = reader.IsDBNull(reader.GetOrdinal("LastWornDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("LastWornDate")),
+                                UserID = reader.GetInt32(reader.GetOrdinal("UserID")),
+                                Category = reader.IsDBNull(reader.GetOrdinal("Category")) ? null : reader.GetString(reader.GetOrdinal("Category")),
+                                Season = reader.IsDBNull(reader.GetOrdinal("Season")) ? null : reader.GetString(reader.GetOrdinal("Season")),
+                                UsageType = reader.IsDBNull(reader.GetOrdinal("UsageType")) ? null : reader.GetString(reader.GetOrdinal("UsageType")),
+                                Color = new Color
+                                {
+                                    ColorName = reader.IsDBNull(reader.GetOrdinal("ColorName")) ? null : reader.GetString(reader.GetOrdinal("ColorName"))
+                                },
+                                ImageID = reader.IsDBNull(reader.GetOrdinal("ImageID")) ? null : reader.GetInt32(reader.GetOrdinal("ImageID"))
                             };
 
                             items.Add(item);
                         }
                     }
                 }
+
                 return Ok(items);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Error retrieving clothing items", Error = ex.Message });
+                return StatusCode(500, new { Message = "Error retrieving all clothing items", Error = ex.Message });
             }
         }
 
@@ -120,6 +120,7 @@ namespace API.Controllers
                 return StatusCode(500, new { Message = "Error retrieving clothing items for user", Error = ex.Message });
             }
         }
+
 
 
 
@@ -351,6 +352,73 @@ namespace API.Controllers
                 return StatusCode(500, new { Message = "Error retrieving favorite items", Error = ex.Message });
             }
         }
+
+        [HttpDelete("{itemId}")]
+        public async Task<IActionResult> DeleteClothingItem(int itemId)
+        {
+            string connStr = _configuration.GetConnectionString("DefaultConnection");
+
+            try
+            {
+                using var connection = new MySqlConnection(connStr);
+                await connection.OpenAsync();
+                using var transaction = await connection.BeginTransactionAsync();
+
+                try
+                {
+                    // 🔄 שלב 1: ניתוק התמונה מהפריט (ImageID = NULL)
+                    var nullifyImageQuery = "UPDATE clothingitems SET ImageID = NULL WHERE ItemID = @ItemID";
+                    using (var cmd = new MySqlCommand(nullifyImageQuery, connection, (MySqlTransaction)transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@ItemID", itemId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    // 🧹 שלב 2: מחיקה מטבלת outfititems
+                    var deleteOutfitItemsQuery = "DELETE FROM outfititems WHERE ItemID = @ItemID";
+                    using (var cmd = new MySqlCommand(deleteOutfitItemsQuery, connection, (MySqlTransaction)transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@ItemID", itemId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    // 🧹 שלב 3: מחיקת התמונה מהטבלה images לפי OwnerID
+                    var deleteImageQuery = "DELETE FROM images WHERE OwnerID = @ItemID";
+                    using (var cmd = new MySqlCommand(deleteImageQuery, connection, (MySqlTransaction)transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@ItemID", itemId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    // 🧹 שלב 4: מחיקת הפריט עצמו
+                    var deleteItemQuery = "DELETE FROM clothingitems WHERE ItemID = @ItemID";
+                    using (var cmd = new MySqlCommand(deleteItemQuery, connection, (MySqlTransaction)transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@ItemID", itemId);
+                        var rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                        if (rowsAffected == 0)
+                        {
+                            await transaction.RollbackAsync();
+                            return NotFound(new { Message = "❌ פריט הלבוש לא נמצא" });
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+                    return Ok(new { Message = "✅ הפריט נמחק עם כל התמונה והקשרים" });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return StatusCode(500, new { Message = "❌ שגיאה במהלך המחיקה", Error = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "❌ שגיאה בפתיחת החיבור למסד", Error = ex.Message });
+            }
+        }
+
 
 
     }
