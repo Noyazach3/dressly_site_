@@ -1,205 +1,204 @@
 ﻿@page "/outfit-planner-thematic"
-@inject IConfiguration Configuration
-@inject NavigationManager Navigation
 @inject HttpClient Http
+@inject ClassLibrary1.Services.LoginSession LoginSession
+@inject NavigationManager Navigation
 @using ClassLibrary1.Models
+@using ClassLibrary1.DTOs
+@using System.Net.Http.Json
 
-
-
-@using MySql.Data.MySqlClient
-@using System.Diagnostics
-
-<div class="container py-5 text-center" style="max-width: 600px;">
-    <h2 class="fw-bold text-pink mb-4">✨ תכנון אאוטפיט לפי נושא</h2>
-    <p class="text-muted small mb-5">בחרי עונה וסגנון, ונתאים לך פריטים מושלמים</p>
+<div class="container py-5 text-center" style="max-width: 1000px;">
+    <h2 class="fw-bold text-pink mb-3">✨ תכנון אאוטפיט לפי נושא</h2>
 
     <EditForm Model="@outfitSelection" OnValidSubmit="HandleValidSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <div class="mb-4 text-end" dir="rtl">
-            <label for="season" class="form-label fw-semibold">בחר עונה:</label>
-            <InputSelect id="season" class="form-select" @bind-Value="outfitSelection.Season">
-                <option value="1">קיץ</option>
-                <option value="2">חורף</option>
-            </InputSelect>
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-4 text-end">
+                <label class="form-label fw-semibold">בחרי עונה:</label>
+                <InputSelect class="form-select" @bind-Value="outfitSelection.Season">
+                    <option value="Summer"> קיץ</option>
+                    <option value="Winter"> חורף</option>
+                </InputSelect>
+            </div>
+
+            <div class="col-md-4 text-end">
+                <label class="form-label fw-semibold">בחרי סגנון:</label>
+                <InputSelect class="form-select" @bind-Value="outfitSelection.Style">
+                    <option value="1"> חולצה ומכנס</option>
+                    <option value="2"> חצאית וגופייה</option>
+                    <option value="3"> שמלה</option>
+                </InputSelect>
+            </div>
         </div>
 
-        <div class="mb-4 text-end" dir="rtl">
-            <label for="style" class="form-label fw-semibold">בחר סגנון:</label>
-            <InputSelect id="style" class="form-select" @bind-Value="outfitSelection.Style">
-                <option value="1">חולצה ומכנס</option>
-                <option value="2">חצאית וגופייה</option>
-                <option value="3">שמלה</option>
-            </InputSelect>
-        </div>
-
-        <div class="text-center">
-            <button type="submit" class="btn btn-sm px-4 py-2 rounded-pill" style="background-color: #f4b6c2; color: white; font-weight: 600;">
-                המשך לתכנון
-            </button>
-        </div>
+        <button type="submit" class="btn btn-sm px-4 py-2 rounded-pill mb-4"
+                style="background-color: rosybrown; color: white; font-weight: 600;">
+            המשך
+        </button>
     </EditForm>
 
-    @if (outfitSelection.IsOutfitComplete)
+    @if (showItems)
     {
-        <div class="mt-5 bg-light rounded-4 p-4 shadow-sm">
-            <h5 class="text-pink fw-bold mb-3">💖 השלב הבא: בחירת פריטים</h5>
-            <p class="text-muted small">(כאן תוצג רשימת הפריטים המתאימים לסגנון שבחרת)</p>
+        @foreach (var category in categoriesToShow)
+        {
+            var itemsForCategory = clothingItems.Where(i => i.Category == category).ToList();
+            if (!itemsForCategory.Any())
+            {
+                continue;
+            }
+
+            <div class="mb-5 text-end" dir="rtl">
+                <h5 class="text-pink fw-semibold mb-3">@GetCategoryLabel(category)</h5>
+                <div class="row row-cols-2 row-cols-md-4 g-3 justify-content-center">
+                    @foreach (var item in itemsForCategory)
+                    {
+                        <div class="col">
+                            <div class="card border-2 @(IsItemSelected(item) ? "border-pink shadow" : "border-0 shadow-sm") small-card"
+                                 @onclick="() => SelectItem(item)">
+                                @if (item.ImageID.HasValue && imageCache.ContainsKey(item.ItemID))
+                                {
+                                    <img src="@($"data:image/jpeg;base64,{imageCache[item.ItemID]}")" class="w-100 object-fit-cover rounded-top" style="height: 130px;" />
+                                }
+                                <div class="card-body py-2 px-2">
+                                    <p class="card-text small text-muted mb-0">@item.Category - @item.ColorName</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="text-center mt-4">
+            <button class="btn btn-sm px-4 py-2 rounded-pill"
+                    style="background-color: rosybrown; color: white; font-weight: 600;"
+                    @onclick="SaveOutfit">
+                יצירת אאוטפיט
+            </button>
         </div>
     }
 </div>
-@if (outfitSelection.IsOutfitComplete)
-{
-    <h4>השלב הבא: בחירת פריטים</h4>
-    <div>
-        <!-- כאן תציג את אפשרויות הבחירה פר פריט -->
-    </div>
-}
 
 <style>
-    .center-page {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 20px;
+    .border-pink {
+        border: 3px solid #ec87b8 !important;
+        border-radius: 12px;
     }
-
-    h1 {
-        font-size: 2.5rem;
-        margin-bottom: 30px;
-    }
-
-    .form-container {
-        width: 100%;
-        max-width: 600px;
-        background-color: #f9f9f9;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-        text-align: right;
-    }
-
-    label {
-        display: block;
-        font-weight: bold;
-        margin-bottom: 5px;
-        text-align: right;
-    }
-
-    select, input, .file-upload {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        box-sizing: border-box;
-        text-align: right;
-    }
-
-    .btn {
-        font-size: 1.5rem;
-        padding: 15px 30px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 20px;
-        transition: background-color 0.3s ease, transform 0.2s ease;
-    }
-
-    .pink-btn {
-        background-color: #ff69b4;
-        color: white;
-    }
-
-        .pink-btn:hover {
-            background-color: #ff1493;
-            transform: scale(1.05);
-        }
 </style>
 
 @code {
-    private OutfitSelection outfitSelection = new OutfitSelection();
-    private List<ClothingItem> clothingItems = new List<ClothingItem>();
+    private OutfitSelection outfitSelection = new();
+    private List<ClothingItem> clothingItems = new();
+    private Dictionary<int, string> imageCache = new();
+    private List<string> categoriesToShow = new();
+    private bool showItems = false;
 
     private async Task HandleValidSubmit()
     {
-        Debug.WriteLine($"Season value: {outfitSelection.Season}, Type: {outfitSelection.Season.GetType()}");
+        showItems = false;
 
-        int season;
-        if (!int.TryParse(outfitSelection.Season.ToString(), out season))
+        clothingItems = await Http.GetFromJsonAsync<List<ClothingItem>>(
+            $"api/clothingitems/user/{LoginSession.UserID}");
+
+        clothingItems = clothingItems
+            .Where(i => i.Season == outfitSelection.Season || i.Season == "Neutral")
+            .ToList();
+
+        categoriesToShow = outfitSelection.Style switch
         {
-            Debug.WriteLine("Season לא הומר למספר שלם. עצירת התהליך.");
-            return;
+            1 => new() { "Shirt", "Pants" },
+            2 => new() { "Skirt", "Top" },
+            3 => new() { "Dress" },
+            _ => new()
+        };
+
+        if (!categoriesToShow.Contains("Shoes")) categoriesToShow.Add("Shoes");
+        if (!categoriesToShow.Contains("Accessories")) categoriesToShow.Add("Accessories");
+
+        imageCache.Clear();
+        foreach (var item in clothingItems)
+        {
+            if (item.ImageID.HasValue)
+            {
+                try
+                {
+                    var imageBytes = await Http.GetByteArrayAsync($"api/image/{item.ImageID}");
+                    imageCache[item.ItemID] = Convert.ToBase64String(imageBytes);
+                }
+                catch { }
+            }
         }
 
-        clothingItems = await LoadClothingItemsBySeason(season);
-
-        if (outfitSelection.Style == 1)
-        {
-            clothingItems = clothingItems.Where(item => item.Category == "Shirt" || item.Category == "Pants").ToList();
-        }
-        else if (outfitSelection.Style == 2)
-        {
-            clothingItems = clothingItems.Where(item => item.Category == "Skirt" || item.Category == "Top").ToList();
-        }
-        else if (outfitSelection.Style == 3)
-        {
-            clothingItems = clothingItems.Where(item => item.Category == "Dress").ToList();
-        }
-
-        outfitSelection.IsOutfitComplete = true;
+        showItems = true;
     }
 
-    private async Task<List<ClothingItem>> LoadClothingItemsBySeason(int season)
+    private void SelectItem(ClothingItem item)
     {
-        var connectionString = Configuration.GetConnectionString("DefaultConnection");
+        outfitSelection.SelectedItems[item.Category] = item;
+    }
 
+    private bool IsItemSelected(ClothingItem item)
+    {
+        return outfitSelection.SelectedItems.TryGetValue(item.Category, out var selected) &&
+               selected.ItemID == item.ItemID;
+    }
+
+    private async Task SaveOutfit()
+    {
         try
         {
-            using (var connection = new MySqlConnection(connectionString))
+            var selectedItems = outfitSelection.SelectedItems.Values.ToList();
+
+            if (selectedItems.Count == 0)
             {
-                await connection.OpenAsync();
-                var query = @"SELECT ItemID, Category, ImageData FROM ClothingItems WHERE Season = @Season";
-                using (var command = new MySqlCommand(query, connection))
+                Console.WriteLine("⚠️ לא נבחרו פריטים");
+                return;
+            }
+
+            var outfit = new OutfitSaveDto
                 {
-                    command.Parameters.AddWithValue("@Season", season);
-                    var reader = await command.ExecuteReaderAsync();
-                    var items = new List<ClothingItem>();
+                    UserID = LoginSession.UserID,
+                    Name = $"אאוטפיט מ-{DateTime.Now:dd/MM/yyyy HH:mm}",
+                    DateCreated = DateTime.Now,
+                    ClothingItemIDs = selectedItems.Select(i => i.ItemID).ToList()
+                };
 
-                    while (await reader.ReadAsync())
-                    {
-                        var item = new ClothingItem
-                            {
-                                ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
-                                Category = reader.GetString(reader.GetOrdinal("Category")),
-                            };
+            var response = await Http.PostAsJsonAsync("api/outfits/add", outfit);
 
-                        items.Add(item);
-                    }
-
-                    return items;
-                }
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/outfit-list");
+            }
+            else
+            {
+                var errorText = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("❌ שגיאה בשמירת האאוטפיט:");
+                Console.WriteLine(errorText);
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error: {ex.Message}");
-            return new List<ClothingItem>();
+            Console.WriteLine($"❌ שגיאה כללית בשמירת אאוטפיט: {ex.Message}");
         }
     }
 
+    private string GetCategoryLabel(string category) => category switch
+    {
+        "Shirt" => "חולצה",
+        "Top" => "גופייה",
+        "Pants" => "מכנסיים",
+        "Skirt" => "חצאית",
+        "Dress" => "שמלה",
+        "Shoes" => "נעליים",
+        "Accessories" => "אקססוריז",
+        _ => category
+    };
 
     public class OutfitSelection
     {
-        public int Season { get; set; }
-        public int Style { get; set; }
-        public bool IsOutfitComplete { get; set; } = false;
+        public string Season { get; set; } = "Summer";
+        public int Style { get; set; } = 1;
+        public Dictionary<string, ClothingItem> SelectedItems { get; set; } = new();
     }
-
-   
 }

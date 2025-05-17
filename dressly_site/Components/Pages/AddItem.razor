@@ -1,6 +1,7 @@
 ﻿@page "/add-item"
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject ClassLibrary1.Services.LoginSession LoginSession
 @using ClassLibrary1.Models
 
 <div class="container mt-5">
@@ -21,8 +22,19 @@
                         <InputSelect id="category" class="form-select" @bind-Value="clothingItem.Category">
                             <option value="">בחר...</option>
                             <option value="Shirt">חולצה</option>
-                            <option value="Pants">מכנסיים</option>
-                            <!-- הוסיפי קטגוריות נוספות -->
+                            <option value="Pants">מכנס</option>
+                            <option value="Shoes">נעליים</option>
+                            <option value="Skirt">חצאית</option>
+                            <option value="Dress">שמלה</option>
+                            <option value="Accessories">אקססוריז</option>
+                            <option value="Top">גופייה</option>
+                            <option value="Jacket">גקט</option>
+
+
+
+
+
+
                         </InputSelect>
                         <ValidationMessage For="@(() => clothingItem.Category)" />
                     </div>
@@ -33,6 +45,8 @@
                             <option value="">בחר...</option>
                             <option value="Summer">קיץ</option>
                             <option value="Winter">חורף</option>
+                            <option value="Neutral">ניטרלי</option>
+
                         </InputSelect>
                         <ValidationMessage For="@(() => clothingItem.Season)" />
                     </div>
@@ -51,12 +65,20 @@
                         <label for="color" class="form-label">:בחר צבע</label>
                         <InputSelect id="color" class="form-select" @bind-Value="clothingItem.ColorName">
                             <option value="">בחר...</option>
-                            <option value="Red">אדום</option>
-                            <option value="Blue">כחול</option>
-                            <!-- הוסיפי צבעים נוספים -->
+                            <option value="Red">🔴 אדום</option>
+                            <option value="Orange">🟠 כתום</option>
+                            <option value="Yellow">🟡 צהוב</option>
+                            <option value="Green">🟢 ירוק</option>
+                            <option value="Blue">🔵 כחול</option>
+                            <option value="Purple">🟣 סגול</option>
+                            <option value="Pink">🌸 ורוד</option>
+                            <option value="Black">⚫ שחור</option>
+                            <option value="White">⚪ לבן</option>
+                            <option value="Colorful">🎨 צבעוני</option>
                         </InputSelect>
                         <ValidationMessage For="@(() => clothingItem.ColorName)" />
                     </div>
+
 
                     <div class="d-grid">
                         <button type="submit" class="btn btn-pink btn-lg">המשך לשלב הבא</button>
@@ -83,7 +105,7 @@
 
 <style>
     .btn-pink {
-        background-color: #ec87b8;
+        background-color: rosybrown;
         border: none;
         color: white;
         font-weight: 600;
@@ -93,7 +115,7 @@
     }
 
         .btn-pink:hover {
-            background-color: #f69dc6;
+            background-color: pink;
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(236, 135, 184, 0.3);
         }
@@ -102,25 +124,39 @@
 @code {
     private ClothingItem clothingItem = new ClothingItem();
     private IBrowserFile selectedFile;
-    private int currentUserId = 1; // לדוגמה – בהמשך לשלב האימות
     private bool isStep1Completed = false;
     private bool isComplete = false;
 
     private async Task HandleStep1Submit()
     {
+        Console.WriteLine("🔍 התחלת שלב 1");
 
-        clothingItem.UserID = currentUserId;
+        clothingItem.UserID = LoginSession.UserID;
+        Console.WriteLine($"👤 נשלח UserID: {clothingItem.UserID}");
+
         clothingItem.DateAdded = DateTime.Now;
 
-        var response = await Http.PostAsJsonAsync("http://localhost:5177/api/clothingitems/addClothingItemAttributes", clothingItem);
-        if (response.IsSuccessStatusCode)
+        try
         {
-            clothingItem.ItemID = await response.Content.ReadFromJsonAsync<int>();
-            isStep1Completed = true;
+            var response = await Http.PostAsJsonAsync("http://localhost:5177/api/clothingitems/addClothingItemAttributes", clothingItem);
+
+            if (response.IsSuccessStatusCode)
+            {
+                clothingItem.ItemID = await response.Content.ReadFromJsonAsync<int>();
+                isStep1Completed = true;
+                Console.WriteLine($"✅ קיבלנו ItemID חדש: {clothingItem.ItemID}");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("❌ שגיאה מהשרת:");
+                Console.WriteLine(errorContent);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("Error adding clothing item attributes");
+            Console.WriteLine("❗ חריג בזמן שליחה לשרת:");
+            Console.WriteLine(ex.Message);
         }
     }
 
@@ -129,22 +165,35 @@
         if (selectedFile != null)
         {
             var content = new MultipartFormDataContent();
+
+            // מוסיפים את ה־ItemID
             content.Add(new StringContent(clothingItem.ItemID.ToString()), "ItemID");
 
-            var fileContent = new StreamContent(selectedFile.OpenReadStream());
+            // מוסיפים את הקובץ
+            var fileContent = new StreamContent(selectedFile.OpenReadStream(maxAllowedSize: 10_000_000)); // עד 10MB
             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(selectedFile.ContentType);
-            content.Add(fileContent, "ImageFile", selectedFile.Name); // ✅ הקפד שהשם בדיוק ככה!
+            content.Add(fileContent, "ImageFile", selectedFile.Name); // חייב להיות בשם המדויק
+
+            Console.WriteLine($"📸 מעלה קובץ: {selectedFile.Name}, גודל: {selectedFile.Size}");
 
             var response = await Http.PostAsync("http://localhost:5177/api/clothingitems/uploadImageForItem", content);
 
             if (response.IsSuccessStatusCode)
             {
+                Console.WriteLine("✅ התמונה הועלתה בהצלחה");
                 isComplete = true;
             }
             else
             {
-                Console.WriteLine("Error uploading image");
+                var errorText = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("❌ שגיאה בהעלאת תמונה:");
+                Console.WriteLine(errorText);
+
             }
+        }
+        else
+        {
+            Console.WriteLine("⚠️ לא נבחר קובץ");
         }
     }
 

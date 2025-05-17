@@ -1,0 +1,117 @@
+﻿@page "/my-clothing"
+@inject HttpClient Http
+@inject ClassLibrary1.Services.LoginSession LoginSession
+@inject IJSRuntime JSRuntime
+@using ClassLibrary1.DTOs
+
+<h3 class="text-center text-pink mb-4">👚 הארון שלי</h3>
+
+<div class="text-end mb-3 me-3">
+    <label>
+        <input type="checkbox" @bind="showOnlyFavorites" class="form-check-input me-2" />
+        הצג רק מועדפים 💖
+    </label>
+</div>
+
+<div class="row row-cols-2 row-cols-md-4 g-3 justify-content-center">
+    @foreach (var item in FilteredItems)
+    {
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center h-100">
+                @if (item.ImageID.HasValue && itemIdToImageId.ContainsKey(item.ItemID))
+                {
+                    <img src="@GetImageUrl(item.ItemID)" class="card-img-top object-fit-cover" style="height: 130px;" />
+                }
+                else
+                {
+                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 130px;">
+                        <span class="text-muted">אין תמונה</span>
+                    </div>
+                }
+
+                <div class="card-body">
+                    <p class="card-text fw-semibold">@item.Category - @item.ColorName</p>
+
+                    <button class="btn btn-sm rounded-pill mt-2"
+                            style="background-color: #f4b6c2; color: white;"
+                            @onclick="() => ToggleFavorite(item)">
+                        @(favoriteItemIds.Contains(item.ItemID) ? "💔 הסר ממועדפים" : "💖 הוסף למועדפים")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ClothingItemDto> allItems = new();
+    private Dictionary<int, int> itemIdToImageId = new(); // ItemID → ImageID
+    private HashSet<int> favoriteItemIds = new();
+    private bool showOnlyFavorites = false;
+
+    private IEnumerable<ClothingItemDto> FilteredItems =>
+        showOnlyFavorites
+            ? allItems.Where(i => favoriteItemIds.Contains(i.ItemID))
+            : allItems;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClothingItems();
+    }
+
+    private async Task LoadClothingItems()
+    {
+        try
+        {
+            allItems = await Http.GetFromJsonAsync<List<ClothingItemDto>>(
+                $"api/clothingitems/user/{LoginSession.UserID}");
+
+            itemIdToImageId = allItems
+                .Where(i => i.ImageID.HasValue)
+                .ToDictionary(i => i.ItemID, i => i.ImageID.Value);
+
+            var favorites = await Http.GetFromJsonAsync<List<int>>(
+                $"api/clothingitems/get-favorites/{LoginSession.UserID}");
+
+            favoriteItemIds = favorites.ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ שגיאה בטעינה: {ex.Message}");
+        }
+    }
+
+    private string GetImageUrl(int itemId)
+    {
+        if (itemIdToImageId.TryGetValue(itemId, out int imageId))
+        {
+            return $"http://localhost:5177/api/image/{imageId}";
+        }
+
+        return "https://via.placeholder.com/150?text=No+Image";
+    }
+
+    private async Task ToggleFavorite(ClothingItemDto item)
+    {
+        var isNowFavorite = !favoriteItemIds.Contains(item.ItemID);
+        var dto = new FavoriteDto
+            {
+                UserID = LoginSession.UserID,
+                ItemID = item.ItemID
+            };
+
+        if (isNowFavorite)
+        {
+            var response = await Http.PostAsJsonAsync("api/clothingitems/add-favorite", dto);
+            if (response.IsSuccessStatusCode)
+                favoriteItemIds.Add(item.ItemID);
+        }
+        else
+        {
+            var response = await Http.DeleteAsync(
+                $"api/clothingitems/remove-favorite?userId={LoginSession.UserID}&itemId={item.ItemID}");
+            if (response.IsSuccessStatusCode)
+                favoriteItemIds.Remove(item.ItemID);
+        }
+    }
+}

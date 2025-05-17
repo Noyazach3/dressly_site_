@@ -2,11 +2,10 @@
 @inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject ClassLibrary1.Services.LoginSession LoginSession
+@inject IJSRuntime JSRuntime
 @using ClassLibrary1.Models
-@using MySql.Data.MySqlClient
-@using System.Linq
-
-
+@using ClassLibrary1.DTOs
 
 <div class="container py-5 text-center">
     <h2 class="fw-bold text-pink mb-4">✨ האאוטפיטים שלי</h2>
@@ -29,12 +28,13 @@
                      @onmouseover="() => ShowFavoriteButton(outfit)"
                      @onmouseleave="() => HideFavoriteButton(outfit)">
                     <div class="d-flex justify-content-center flex-wrap mb-3">
-                        @if (outfit.ClothingItemIDs != null && outfit.ClothingItemIDs.Count > 0)
+                        @if (outfit.ClothingItemIDs?.Any() == true)
                         {
                             @foreach (var itemId in outfit.ClothingItemIDs)
                             {
                                 <img src="@GetImageUrl(itemId)" alt="Clothing Item"
-                                     class="rounded me-1 mb-2" style="width: 80px; height: 80px; object-fit: cover;" />
+                                     class="rounded me-1 mb-2"
+                                     style="width: 80px; height: 80px; object-fit: cover;" />
                             }
                         }
                         else
@@ -45,14 +45,30 @@
 
                     <div>
                         <h5 class="mb-1">@outfit.Name</h5>
-                        <p class="text-muted small">@outfit.Description</p>
 
                         @if (outfitFilter == "All")
                         {
-                            <button class="btn btn-sm rounded-pill mt-2"
-                                    style="background-color: #f4b6c2; color: white; font-weight: 500; display:@(outfit.IsHovered ? "inline-block" : "none")"
-                                    @onclick="() => AddToFavorites(outfit)">
-                                הוסף למועדפים 💖
+                            @if (!outfit.IsFavorite)
+                            {
+                                <button class="btn btn-sm rounded-pill mt-2"
+                                        style="background-color: rosybrown; color: white; font-weight: 500; display:@(outfit.IsHovered ? "inline-block" : "none")"
+                                        @onclick="async () => await AddToFavorites(outfit)">
+                                    הוסף למועדפים 💖
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm rounded-pill mt-2"
+                                        style="background-color: #ccc; color: black; font-weight: 500; display:@(outfit.IsHovered ? "inline-block" : "none")"
+                                        @onclick="async () => await RemoveFromFavorites(outfit)">
+                                    הסר ממועדפים 💔
+                                </button>
+                            }
+
+                            <button class="btn btn-sm btn-outline-danger mt-2 ms-2"
+                                    style="display:@(outfit.IsHovered ? "inline-block" : "none")"
+                                    @onclick="() => DeleteOutfit(outfit.OutfitID)">
+                                🗑 מחק אאוטפיט
                             </button>
                         }
                     </div>
@@ -61,13 +77,10 @@
         }
     </div>
 
-    @if (outfitFilter == "All")
+    @if (!outfits.Any())
     {
-        <div class="text-center mt-4">
-            <button type="submit" class="btn btn-sm px-4 py-2 rounded-pill"
-                    style="background-color: #f4b6c2; color: white; font-weight: 600;">
-                עדכן מועדפים
-            </button>
+        <div class="mt-4 text-muted">
+            אין עדיין אאוטפיטים להצגה 👗
         </div>
     }
 
@@ -80,49 +93,107 @@
 </div>
 
 @code {
-    private OutfitSelection outfitSelection = new OutfitSelection();
-    private List<Outfit> outfits = new List<Outfit>();
+    private OutfitSelection outfitSelection = new();
+    private List<Outfit> outfits = new();
+    private Dictionary<int, int> itemIdToImageId = new(); // ItemID → ImageID
     private string outfitFilter = "All";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOutfits();
+    }
 
     private async Task LoadOutfits()
     {
         try
         {
-            outfits = await Http.GetFromJsonAsync<List<Outfit>>("api/outfits/get-user-outfits?userId=1");
+            outfits = await Http.GetFromJsonAsync<List<Outfit>>(
+                $"http://localhost:5177/api/outfits/get-user-outfits?userId={LoginSession.UserID}");
+
+            var items = await Http.GetFromJsonAsync<List<ClothingItem>>(
+                $"http://localhost:5177/api/clothingitems/user/{LoginSession.UserID}");
+
+            itemIdToImageId = items
+                .Where(i => i.ImageID.HasValue)
+                .ToDictionary(i => i.ItemID, i => i.ImageID.Value);
+
+            var favorites = await Http.GetFromJsonAsync<List<int>>(
+                $"http://localhost:5177/api/outfits/get-favorites/{LoginSession.UserID}");
+
+            foreach (var outfit in outfits)
+            {
+                outfit.IsFavorite = favorites.Contains(outfit.OutfitID);
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            Console.WriteLine($"❌ שגיאה בטעינה: {ex.Message}");
         }
-    }
-
-    private void AddToFavorites(Outfit outfit)
-    {
-        outfit.IsFavorite = true;
-    }
-
-    private void ShowFavoriteButton(Outfit outfit)
-    {
-        outfit.IsHovered = true;
-    }
-
-    private void HideFavoriteButton(Outfit outfit)
-    {
-        outfit.IsHovered = false;
-    }
-
-    private IEnumerable<Outfit> FilterOutfits(List<Outfit> outfits, string filter)
-    {
-        if (filter == "Favorites")
-        {
-            return outfits.Where(outfit => outfit.IsFavorite);
-        }
-        return outfits;
     }
 
     private string GetImageUrl(int itemId)
     {
-        return $"https://your-api-url/api/clothingitems/get-image/{itemId}";
+        return itemIdToImageId.TryGetValue(itemId, out int imageId)
+            ? $"http://localhost:5177/api/image/{imageId}"
+            : "https://via.placeholder.com/80?text=No+Image";
+    }
+
+    private async Task AddToFavorites(Outfit outfit)
+    {
+        outfit.IsFavorite = true;
+
+        var dto = new FavoriteDto
+        {
+            UserID = LoginSession.UserID,
+            OutfitID = outfit.OutfitID
+        };
+
+        var response = await Http.PostAsJsonAsync("http://localhost:5177/api/outfits/add-favorite", dto);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("❌ שגיאה בהוספת מועדף");
+        }
+    }
+
+    private async Task RemoveFromFavorites(Outfit outfit)
+    {
+        outfit.IsFavorite = false;
+
+        var response = await Http.DeleteAsync(
+            $"http://localhost:5177/api/outfits/remove-favorite?userId={LoginSession.UserID}&outfitId={outfit.OutfitID}");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("❌ שגיאה בהסרת מועדף");
+        }
+    }
+
+    private async Task DeleteOutfit(int outfitId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "האם את בטוחה שתרצי למחוק את האאוטפיט?");
+        if (!confirmed) return;
+
+        var response = await Http.DeleteAsync($"http://localhost:5177/api/outfits/delete/{outfitId}");
+        if (response.IsSuccessStatusCode)
+        {
+            outfits.RemoveAll(o => o.OutfitID == outfitId);
+            Console.WriteLine("✅ האאוטפיט נמחק");
+        }
+        else
+        {
+            Console.WriteLine("❌ שגיאה במחיקת האאוטפיט");
+        }
+    }
+
+    private void ShowFavoriteButton(Outfit outfit) => outfit.IsHovered = true;
+    private void HideFavoriteButton(Outfit outfit) => outfit.IsHovered = false;
+
+    private IEnumerable<Outfit> FilterOutfits(List<Outfit> outfits, string filter)
+    {
+        return filter == "Favorites"
+            ? outfits.Where(o => o.IsFavorite)
+            : outfits;
     }
 
     public class OutfitSelection
@@ -135,8 +206,16 @@
         public int OutfitID { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public List<int> ClothingItemIDs { get; set; } = new List<int>();
+        public List<int> ClothingItemIDs { get; set; } = new();
         public bool IsFavorite { get; set; }
         public bool IsHovered { get; set; }
+    }
+
+    public class ClothingItem
+    {
+        public int ItemID { get; set; }
+        public int? ImageID { get; set; }
+        public string Category { get; set; }
+        public string ColorName { get; set; }
     }
 }

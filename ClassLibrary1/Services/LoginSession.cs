@@ -6,10 +6,10 @@ namespace ClassLibrary1.Services
     public class LoginSession 
     {
         // ערכי ברירת מחדל עבור אורח
-        public int UserID { get; private set; } = 0;
-        public string Username { get; private set; } = "Guest";
-        public string Email { get; private set; } = "guest@site.com";
-        public string Role { get; private set; } = "Guest";
+        public int UserID { get;  set; } = 0;
+        public string Username { get;  set; } = "Guest";
+        public string Email { get;  set; } = "guest@site.com";
+        public string Role { get;  set; } = "Guest";
 
         public void SetLoginDetails(int userId, string username, string email, string role)
         {

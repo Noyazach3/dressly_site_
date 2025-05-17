@@ -1,31 +1,39 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager Navigation
-@inject IJSRuntime JSRuntime // לשימוש עם localStorage
+@inject ClassLibrary1.Services.LoginSession LoginSession
+@inject IJSRuntime JSRuntime
 
 <div class="page">
-    <!-- שורת הניווט העליונה -->
-    <header class="top-row">
-        <button class="btn-nav" @onclick="NavigateToHome">בית</button>
+    <!-- 🔝 סרגל ניווט ממורכז -->
+    <header class="navbar navbar-light bg-white border-bottom shadow-sm py-2">
+        <div class="container-fluid d-flex justify-content-center">
+            <div class="nav-wrapper d-flex gap-2 flex-wrap justify-content-center align-items-center">
 
-        @if (IsAuthenticated)
-        {
-            <button class="btn-nav" @onclick="NavigateToAddItem">הוסף פריט</button>
-            <button class="btn-nav" @onclick="NavigateToPlanOutfits">תכנון אאוטפיט</button>
-            <button class="btn-nav" @onclick="NavigateToViewOutfits">אאוטפיטים מתוכננים</button>
-            <button class="btn-nav" @onclick="NavigateToLaundry">מעקב כביסה</button>
 
-            @if (UserRole == "Admin")
-            {
-                <button class="btn-nav" @onclick="NavigateToUserManagement">ניהול משתמשים</button>
-                <button class="btn-nav" @onclick="NavigateToStatistics">סטטיסטיקות</button>
-            }
+                @if (IsAuthenticated && UserRole != "Admin")
+                {
+                    <button class="btn btn-link nav-btn" @onclick="NavigateToHome">🏠 בית</button>
+                    <button class="btn btn-link nav-btn" @onclick="NavigateToAddItem">➕ הוספת פריט</button>
+                    <button class="btn btn-link nav-btn" @onclick="NavigateToPlanOutfits">🎨 יצירת אאוטפיט</button>
+                    <button class="btn btn-link nav-btn" @onclick="NavigateToViewOutfits">👗 האאוטפיטים שלי</button>
+                    <button class="btn btn-link nav-btn" @onclick="NavigateToMyClothing">👚 הארון שלי</button>
+                    <button class="btn btn-outline-danger btn-sm ms-2" @onclick="Logout">🚪 התנתקות</button>
+                }
 
-            <button class="btn-nav logout-btn" @onclick="Logout">התנתקות</button>
-        }
-        else
-        {
-            <button class="btn-nav" @onclick="NavigateToLogin">התחבר</button>
-        }
+                    @if ( UserRole == "Admin")
+                    {
+                        <button class="btn btn-link nav-btn text-danger" @onclick="NavigateToUserManagement">🛠 לוח ניהול</button>
+                     
+                        <button class="btn btn-outline-danger btn-sm ms-2" @onclick="Logout">🚪 התנתקות</button>
+
+                    }
+
+                
+                
+                
+              
+            </div>
+        </div>
     </header>
 
     <main>
@@ -35,45 +43,52 @@
     </main>
 </div>
 
-@code {
-    private string UserRole = string.Empty;
-    private bool IsAuthenticated = false;
-    private bool isRendered = false;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender) // הרצה רק בפעם הראשונה לאחר הרינדור
-        {
-            try
-            {
-                var username = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "username");
-                UserRole = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "role");
-
-                IsAuthenticated = !string.IsNullOrEmpty(username);
-                StateHasChanged(); // עדכון ה-UI לאחר טעינת הנתונים
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading user data: {ex.Message}");
-            }
-        }
+<style>
+    .nav-btn {
+        font-size: 14px;
+        color: #444;
+        padding: 4px 8px;
+        text-decoration: none !important;
     }
+
+        .nav-btn:hover {
+            color: #ec87b8 !important;
+        }
+
+    .navbar {
+        font-size: 14px;
+    }
+
+    .nav-wrapper {
+        width: 100%;
+        text-align: center;
+    }
+
+    .btn-link {
+        text-decoration: none;
+    }
+</style>
+
+@code {
+    private bool IsAuthenticated => LoginSession.UserID > 0;
+    private string UserRole => LoginSession.Role ?? "";
 
     private void NavigateToHome() => Navigation.NavigateTo("/home");
     private void NavigateToAddItem() => Navigation.NavigateTo("/add-item");
     private void NavigateToPlanOutfits() => Navigation.NavigateTo("/plan-outfits");
     private void NavigateToViewOutfits() => Navigation.NavigateTo("/outfit-list");
-    private void NavigateToLaundry() => Navigation.NavigateTo("/laundry-list");
+    private void NavigateToMyClothing() => Navigation.NavigateTo("/my-clothing");
+    private void NavigateToUserManagement() => Navigation.NavigateTo("admin-dashboard");
     private void NavigateToLogin() => Navigation.NavigateTo("/login");
-    private void NavigateToUserManagement() => Navigation.NavigateTo("/admin/users");
-    private void NavigateToStatistics() => Navigation.NavigateTo("/admin/stats");
 
     private async Task Logout()
     {
         await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "username");
         await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "role");
-        IsAuthenticated = false;
-        UserRole = string.Empty;
-        Navigation.NavigateTo("/login", forceLoad: true);
+
+        LoginSession.UserID = 0;
+        LoginSession.Role = null;
+
+        Navigation.NavigateTo("/", forceLoad: true);
     }
 }

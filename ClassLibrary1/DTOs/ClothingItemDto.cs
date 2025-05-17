@@ -9,6 +9,8 @@ namespace ClassLibrary1.DTOs
     /// </summary>
     public class ClothingItemDto
     {
+        public int ItemID { get; set; }
+
         public int UserID { get; set; }
 
         [Required(ErrorMessage = "שדה חובה")]
@@ -22,6 +24,8 @@ namespace ClassLibrary1.DTOs
 
         [Required(ErrorMessage = "שדה חובה")]
         public string ColorName { get; set; }
+      
+        public int? ImageID { get; set; }
 
         public DateTime? DateAdded { get; set; }
     }

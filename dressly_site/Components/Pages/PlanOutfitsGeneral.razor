@@ -1,9 +1,9 @@
 ﻿@page "/plan-outfits-general"
-@inject IConfiguration Configuration
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject ClassLibrary1.Services.LoginSession LoginSession
 @using ClassLibrary1.Models
-@using MySql.Data.MySqlClient
+@using ClassLibrary1.DTOs
 
 <div class="container py-4 text-center" style="max-width: 1000px;">
     <div class="mb-5">
@@ -11,7 +11,7 @@
         <p class="text-muted small">בחר/י פריט אחד מכל קטגוריה וצרי לוק מושלם</p>
     </div>
 
-    <EditForm Model="@outfitSelection" OnValidSubmit="HandleValidSubmit">
+    <EditForm Model="@outfitSelection" OnSubmit="HandleValidSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
@@ -23,7 +23,8 @@
                     @foreach (var item in clothingItems.Where(i => i.Category == category))
                     {
                         <div class="col">
-                            <div class="card border-0 shadow-sm small-card" @onclick="() => SelectItem(item)">
+                            <div class="card border-2 @(IsItemSelected(item) ? "border-pink shadow" : "border-0 shadow-sm") small-card"
+                                 @onclick="() => SelectItem(item)">
                                 @if (item.ImageID.HasValue && imageCache.ContainsKey(item.ItemID))
                                 {
                                     <img src="@($"data:image/jpeg;base64,{imageCache[item.ItemID]}")" class="w-100 object-fit-cover rounded-top" style="height: 130px;" />
@@ -40,7 +41,7 @@
 
         <div class="text-center mt-4">
             <button type="submit" class="btn btn-sm px-4 py-2 rounded-pill" style="background-color: #f4b6c2; color: white; font-weight: 600;">
-                המשך לתכנון
+                צור אאוטפיט
             </button>
         </div>
     </EditForm>
@@ -48,7 +49,7 @@
     @if (outfitSelection.IsOutfitComplete)
     {
         <div class="mt-5 bg-light rounded-4 p-4 shadow-sm">
-            <h5 class="text-pink fw-bold mb-4">💖 האאוטפיט שלך מוכן!</h5>
+            <h5 class="text-pink fw-bold mb-4">💖 האאוטפיט שלך מוכן ונשמר!</h5>
             <div class="row justify-content-center g-4">
                 @foreach (var item in outfitSelection.SelectedItems.Values)
                 {
@@ -64,41 +65,20 @@
         </div>
     }
 </div>
-@if (outfitSelection.IsOutfitComplete)
-{
-    <h4>האאוטפיט שלך מוכן!</h4>
-    <div>
-        <h5>פריטי האאוטפיט שנבחרו:</h5>
-        @foreach (var item in outfitSelection.SelectedItems.Values)
-        {
-            <p>@item.Category - @item.ColorName</p>
-        }
-    </div>
-}
+
+<style>
+    .border-pink {
+        border: 3px solid #ec87b8 !important;
+        border-radius: 12px;
+    }
+</style>
 
 @code {
+    private OutfitSelection outfitSelection = new();
+    private List<ClothingItem> clothingItems = new();
+    private Dictionary<int, string> imageCache = new();
 
-    private OutfitSelection outfitSelection = new OutfitSelection();
-    private List<ClothingItem> clothingItems = new List<ClothingItem>();
-    // מילון לאחסון נתוני תמונה כבסיס64, כאשר המפתח הוא ItemID
-    private Dictionary<int, string> imageCache = new Dictionary<int, string>();
-
-    private string GetCategoryLabel(string category)
-    {
-        return category switch
-        {
-            "Shirt" => "חולצה",
-            "Pants" => "מכנסיים",
-            "Skirt" => "חצאית",
-            "Dress" => "שמלה",
-            "Shoes" => "נעליים",
-            "Accessories" => "אקססוריז",
-            _ => category
-        };
-    }
-
-    // רשימה של קטגוריות
-    private List<string> categories = new List<string> { "Shirt", "Pants", "Skirt", "Dress", "Shoes", "Accessories" };
+    private List<string> categories = new() { "Shirt", "Pants", "Skirt", "Dress", "Shoes", "Accessories" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,39 +87,55 @@
 
     private async Task HandleValidSubmit()
     {
-        outfitSelection.IsOutfitComplete = true;
+        Console.WriteLine("🔔 HandleValidSubmit הופעל!");
+        outfitSelection.IsOutfitComplete = false;
+        Console.WriteLine($"🧪 LoginSession.UserID = {LoginSession.UserID}");
+
+
+        try
+        {
+            var itemIDs = outfitSelection.SelectedItems.Values
+                .Select(i => i.ItemID)
+                .ToList();
+
+            var outfit = new OutfitSaveDto
+                {
+                    UserID = LoginSession.UserID,
+                    Name = $"אאוטפיט מ-{DateTime.Now:dd/MM/yyyy HH:mm}",
+                    DateCreated = DateTime.Now,
+                    ClothingItemIDs = itemIDs
+                };
+
+            var response = await Http.PostAsJsonAsync("api/outfits/add", outfit);
+
+            if (response.IsSuccessStatusCode)
+            {
+                outfitSelection.IsOutfitComplete = true;
+                Console.WriteLine("✅ האאוטפיט נשמר בהצלחה במסד הנתונים");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("❌ שמירת האאוטפיט נכשלה:");
+                Console.WriteLine(error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❗ שגיאה כללית בשמירת האאוטפיט: {ex.Message}");
+        }
+
+        // ריענון ידני של ממשק המשתמש
+        StateHasChanged();
     }
 
     private async Task LoadClothingItems()
     {
-        var connectionString = Configuration.GetConnectionString("DefaultConnection");
-
         try
         {
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                var query = @"SELECT * FROM ClothingItems";
-                using (var command = new MySqlCommand(query, connection))
-                {
-                    var reader = await command.ExecuteReaderAsync();
-                    var items = new List<ClothingItem>();
-                    while (await reader.ReadAsync())
-                    {
-                        items.Add(new ClothingItem
-                            {
-                                ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
-                                Category = reader.GetString(reader.GetOrdinal("Category")),
-                                ColorName = reader.GetString(reader.GetOrdinal("Color")),
-                                // שולפים רק את ImageID, לא ImageData
-                                ImageID = reader.IsDBNull(reader.GetOrdinal("ImageID")) ? null : reader.GetInt32(reader.GetOrdinal("ImageID"))
-                            });
-                    }
-                    clothingItems = items;
-                }
-            }
+            clothingItems = await Http.GetFromJsonAsync<List<ClothingItem>>(
+                $"api/clothingitems/user/{LoginSession.UserID}");
 
-            // טוענים את נתוני התמונות לכל פריט שיש לו ImageID
             foreach (var item in clothingItems)
             {
                 if (item.ImageID.HasValue)
@@ -154,52 +150,51 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
-        }
-    }
-
-    private async Task SelectItem(ClothingItem item)
-    {
-        if (!outfitSelection.SelectedItems.ContainsKey(item.Category))
-        {
-            outfitSelection.SelectedItems[item.Category] = item;
+            Console.WriteLine($"❌ שגיאה בטעינת פריטים: {ex.Message}");
         }
     }
 
     private async Task<byte[]> GetImageData(int imageId)
     {
-        var connectionString = Configuration.GetConnectionString("DefaultConnection");
         byte[] imageData = null;
 
         try
         {
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                var query = "SELECT ImageData FROM image WHERE ImageID = @ImageID";
-                using (var command = new MySqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@ImageID", imageId);
-                    var reader = await command.ExecuteReaderAsync();
-
-                    if (await reader.ReadAsync())
-                    {
-                        imageData = reader.IsDBNull(reader.GetOrdinal("ImageData")) ? null : (byte[])reader["ImageData"];
-                    }
-                }
-            }
+            imageData = await Http.GetByteArrayAsync($"api/image/{imageId}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            Console.WriteLine($"❌ שגיאה בטעינת תמונה: {ex.Message}");
         }
 
         return imageData;
     }
 
+    private void SelectItem(ClothingItem item)
+    {
+        outfitSelection.SelectedItems[item.Category] = item;
+    }
+
+    private bool IsItemSelected(ClothingItem item)
+    {
+        return outfitSelection.SelectedItems.TryGetValue(item.Category, out var selected) &&
+               selected.ItemID == item.ItemID;
+    }
+
+    private string GetCategoryLabel(string category) => category switch
+    {
+        "Shirt" => "חולצה",
+        "Pants" => "מכנסיים",
+        "Skirt" => "חצאית",
+        "Dress" => "שמלה",
+        "Shoes" => "נעליים",
+        "Accessories" => "אקססוריז",
+        _ => category
+    };
+
     public class OutfitSelection
     {
-        public Dictionary<string, ClothingItem> SelectedItems { get; set; } = new Dictionary<string, ClothingItem>();
+        public Dictionary<string, ClothingItem> SelectedItems { get; set; } = new();
         public bool IsOutfitComplete { get; set; } = false;
     }
 }
