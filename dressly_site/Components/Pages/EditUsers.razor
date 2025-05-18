@@ -89,7 +89,7 @@
 
 <h3>🔧 ניהול משתמשים</h3>
 
-<!-- תיבת חיפוש -->
+<!--   תיבת חיפוש משתמש -->
 <div class="search-container">
     <input type="text" class="search-box" placeholder="🔎 חפש משתמש..." @bind="searchQuery" @oninput="FilterUsers">
 </div>
@@ -97,6 +97,8 @@
 <!-- הצגת כמות המשתמשים -->
 <p class="text-center fw-semibold">👥 סה"כ משתמשים שאינם מנהלים: <span class="badge badge-user">@nonAdminCount</span></p>
 
+
+<!--  טוען או מציג את רשימת המשתמשים -->
 @if (filteredUsers == null)
 {
     <p class="text-center text-muted">🔄 טוען משתמשים...</p>
@@ -140,20 +142,26 @@ else
 }
 
 @code {
-    private List<UserInfoModel> users = new();
-    private List<UserInfoModel> filteredUsers = new();
-    private int nonAdminCount;
+    private List<UserInfoModel> users = new(); // כל המשתמשים שהתקבלו מהשרת
+    private List<UserInfoModel> filteredUsers = new(); // משתמשים מסוננים לפי חיפוש
+    private int nonAdminCount; // כמות המשתמשים שאינם מנהלים
     private string searchQuery = "";
 
     protected override async Task OnInitializedAsync()
     {
+        // שליפת כמות משתמשים רגילים
         nonAdminCount = (await Http.GetFromJsonAsync<Dictionary<string, int>>("api/Admin/non-admin-count"))["NonAdminUsersCount"];
+
+        //שליפת רשימת כל משתמשים
         users = await Http.GetFromJsonAsync<List<UserInfoModel>>("api/Admin/GetAllUsers");
+
+        // בהתחלה מציגים את כולם
         filteredUsers = new List<UserInfoModel>(users);
     }
 
     private void FilterUsers()
     {
+        //אם לא חופש שום דבר החזר את כל המשתמשים. אחרת סנן לפי מה שבוקש
         filteredUsers = string.IsNullOrWhiteSpace(searchQuery)
             ? new List<UserInfoModel>(users)
             : users.Where(u => u.Username.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -162,6 +170,7 @@ else
 
     private async Task ConfirmDelete(int userId)
     {
+        // בקשת אישור מהמשתמש לפני מחיקה
         bool confirmResult = await JS.InvokeAsync<bool>("confirm", "האם אתה בטוח שברצונך למחוק את המשתמש?");
         if (confirmResult)
         {
@@ -171,11 +180,13 @@ else
 
     private async Task DeleteUser(int userId)
     {
+        // מחיקת משתמש
         var response = await Http.DeleteAsync($"api/Admin/user/{userId}");
         ;
 
         if (response.IsSuccessStatusCode)
         {
+            // הסרה מהתצוגה
             users.RemoveAll(u => u.UserID == userId);
             filteredUsers.RemoveAll(u => u.UserID == userId);
             nonAdminCount--;

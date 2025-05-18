@@ -55,12 +55,13 @@
     }
 </style>
 
-<div class="stats-container">
+<!--  תיבת סטטיסטיקה ראשית -->
+<div class="stats-container"> 
     <div class="stats-title">📊 סטטיסטיקות כלליות</div>
 
     @if (loading)
     {
-        <div class="loader">טוען נתונים...</div>
+        <div class="loader">טוען נתונים...</div> 
     }
     else
     {
@@ -93,17 +94,20 @@
 
     private PopularItem mostPopularItem;
 
+
+    //  פעולה שמופעלת עם טעינת הדף
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // (שליפת נתונים כלליים (משתמשים, בגדים, אאוטפיטים
             var json = await Http.GetFromJsonAsync<System.Text.Json.JsonElement>("api/admin/general");
 
             totalUsers = json.GetProperty("totalUsers").GetInt32();
             totalClothingItems = json.GetProperty("totalClothingItems").GetInt32();
             totalOutfits = json.GetProperty("totalOutfits").GetInt32();
 
-            await LoadMostPopularItem();
+            await LoadMostPopularItem(); // שליפת פריט פופולרי
         }
         catch (Exception ex)
         {
@@ -113,6 +117,7 @@
         loading = false;
     }
 
+    // שליפת הפריט פופולרי מהשרת
     private async Task LoadMostPopularItem()
     {
         try

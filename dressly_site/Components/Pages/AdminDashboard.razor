@@ -84,17 +84,10 @@
 
 @if (string.IsNullOrEmpty(LoginSession.Role))
 {
-    <p class="text-center text-muted">🔄 טוען נתוני משתמש...</p>
+    <p class="text-center text-muted">🔄 טוען נתוני משתמש...</p> // שלב טעינה אם לא נטענו פרטי המשתמש עדיין
 }
-else if (!LoginSession.Role.Equals("Admin"))
-{
-    <p class="text-center fw-bold">Current Role: @LoginSession.Role</p>
 
-    <div class="alert alert-danger text-center" role="alert">
-        ⛔ אינך רשאי לצפות בדף זה. תועבר לדף הבית בעוד @countdown שניות...
-    </div>
-}
-else
+else // הצגת הכרטיסיות לניהול
 {
     <p class="text-center fw-bold">Current Role: @LoginSession.Role</p>
 
@@ -120,12 +113,9 @@ else
 }
 
 @code {
-    private int countdown = 5; // ספירה לאחור מ-5 שניות
 
     protected override async Task OnInitializedAsync()
     {
-        // הדפסת התפקיד ל-Debug Console
-        Console.WriteLine($"🔹 LoginSession.Role בתחילת OnInitializedAsync(): {LoginSession.Role}");
 
         // המתנה לטעינת נתוני המשתמש אם הם עדיין לא נטענו
         int retries = 5;

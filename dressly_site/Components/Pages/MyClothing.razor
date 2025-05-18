@@ -4,8 +4,11 @@
 @inject IJSRuntime JSRuntime
 @using ClassLibrary1.DTOs
 
+<!--צפייה בפרטי הלבוש -->
+
 <h3 class="text-center text-pink mb-4">👚 הארון שלי</h3>
 
+<!--  תיבת סימון להצגת מועדפים בלבד -->
 <div class="text-end mb-3 me-3">
     <label>
         <input type="checkbox" @bind="showOnlyFavorites" class="form-check-input me-2" />
@@ -13,11 +16,15 @@
     </label>
 </div>
 
+
+<!--  הצגת כל הבגדים -->
 <div class="row row-cols-2 row-cols-md-4 g-3 justify-content-center">
     @foreach (var item in FilteredItems)
     {
         <div class="col">
             <div class="card border-0 shadow-sm text-center h-100">
+
+                <!--  הצגת תמונה אם קיימת -->
                 @if (item.ImageID.HasValue && itemIdToImageId.ContainsKey(item.ItemID))
                 {
                     <img src="@GetImageUrl(item.ItemID)" class="card-img-top object-fit-cover" style="height: 130px;" />
@@ -29,6 +36,7 @@
                     </div>
                 }
 
+                <!--  פרטי הבגד וכפתורים -->
                 <div class="card-body">
                     <p class="card-text fw-semibold">@item.Category - @item.ColorName</p>
 
@@ -51,21 +59,24 @@
 </div>
 
 @code {
-    private List<ClothingItemDto> allItems = new();
+    private List<ClothingItemDto> allItems = new(); //רשימה של כל פרטי הלבוש של המשתמש
     private Dictionary<int, int> itemIdToImageId = new(); // ItemID → ImageID
-    private HashSet<int> favoriteItemIds = new();
-    private bool showOnlyFavorites = false;
+    private HashSet<int> favoriteItemIds = new(); // רשימת המועדפים של המשתמש
+    private bool showOnlyFavorites = false; // האם להציג רק פריטים מועדפים
 
+    //סינון לפי תיבת הסימון
     private IEnumerable<ClothingItemDto> FilteredItems =>
         showOnlyFavorites
             ? allItems.Where(i => favoriteItemIds.Contains(i.ItemID))
             : allItems;
 
+    // טעינה ראשונית של הנתונים
     protected override async Task OnInitializedAsync()
     {
         await LoadClothingItems();
     }
 
+    //שליפת פריטי לבוש 
     private async Task LoadClothingItems()
     {
         try
@@ -88,6 +99,7 @@
         }
     }
 
+    // יצירת URL של תמונה לפי מזהה תמונה
     private string GetImageUrl(int itemId)
     {
         if (itemIdToImageId.TryGetValue(itemId, out int imageId))
@@ -98,6 +110,8 @@
         return "https://via.placeholder.com/150?text=No+Image";
     }
 
+
+    // הוספה או הסרה של פריט מהמועדפים
     private async Task ToggleFavorite(ClothingItemDto item)
     {
         var isNowFavorite = !favoriteItemIds.Contains(item.ItemID);
@@ -124,6 +138,7 @@
 
     }
 
+    // מחיקת פריט
     private async Task DeleteItem(int itemId)
     {
         var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "האם את בטוח/ה שתרצה למחוק את הפריט?");

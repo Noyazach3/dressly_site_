@@ -1,30 +1,36 @@
-﻿@page "/signup"
-@inject NavigationManager Navigation
-@inject IHttpClientFactory ClientFactory
-@using ClassLibrary1.Models
+﻿@page "/signup" // כתובת ה-URL של עמוד ההרשמה
+@inject NavigationManager Navigation // שירות לניווט בין עמודים
+@inject IHttpClientFactory ClientFactory // יוצר HttpClient לשליחת בקשות
+@using ClassLibrary1.DTOs 
 
 <h1 style="text-align:center;">הרשמה</h1>
 
+<!-- טופס הרשמה בתוך container -->
 <div class="container" style="max-width: 400px; margin-top: 20px;">
     <EditForm Model="@user" OnValidSubmit="HandleValidSubmit">
+        <!-- בעת שליחה תקינה מופעלת HandleValidSubmit -->
         <DataAnnotationsValidator />
         <ValidationSummary />
-
+        
+        <!-- שדה: שם משתמש -->
         <div class="form-group">
             <label for="username" style="text-align: right; display: block;">:שם משתמש</label>
             <InputText id="username" class="form-control" @bind-Value="user.Username" required />
         </div>
 
+        <!-- שדה: אימייל -->
         <div class="form-group">
             <label for="email" style="text-align: right; display: block;">:אימייל</label>
             <InputText id="email" type="email" class="form-control" @bind-Value="user.Email" required />
         </div>
 
+        <!-- שדה: סיסמה -->
         <div class="form-group">
             <label for="password" style="text-align: right; display: block;">:סיסמה</label>
             <InputText id="password" type="password" class="form-control" @bind-Value="user.PasswordHash" required />
         </div>
 
+        <!-- כפתור הרשמה -->
         <div class="form-group" style="margin-top: 20px;">
             <button type="submit" class="btn btn-lg"
                     style="background-color: #ff69b4; border: none; font-size: 1.25em; font-weight: bold; width: 100%;
@@ -34,16 +40,20 @@
         </div>
     </EditForm>
 
+    <!-- קישור לעמוד התחברות למי שכבר רשום -->
     <div style="margin-top: 10px; text-align: center;">
         <p>כבר יש לך חשבון? <a href="/login">התחבר כאן</a></p>
     </div>
 
+    <!-- הודעת שגיאה (אם קיימת) -->
     @if (!string.IsNullOrEmpty(Message))
     {
         <div class="alert alert-danger mt-3">
             @Message
         </div>
     }
+
+    <!-- הודעת הצלחה (אם קיימת) -->
     @if (!string.IsNullOrEmpty(SuccessMessage))
     {
         <div class="alert alert-success mt-3">
@@ -53,11 +63,14 @@
 </div>
 
 @code {
-    private User user = new User();
+    
+    private RegisterModel user = new RegisterModel(); // אובייקט ההרשמה – מכיל את הנתונים שמוזנים בטופס
 
+    // הודעות לתצוגה
     private string Message;
     private string SuccessMessage;
 
+    // פעולה שמופעלת לאחר שליחה תקינה של הטופס
     private async Task HandleValidSubmit()
     {
         Message = string.Empty;
@@ -66,15 +79,16 @@
         try
         {
             var client = ClientFactory.CreateClient();
-            client.BaseAddress = new Uri("http://localhost:5177/api/"); // ודא שזה ה-URL הנכון של ה-API שלך
+            client.BaseAddress = new Uri("http://localhost:5177/api/"); // כתובת בסיס של ה־API שלך
 
-            user.Role = "User"; // נדרש לפי מבנה ה-API
+            user.Role = "User"; // תפקיד ברירת מחדל לכל משתמש חדש
 
+            // שליחת בקשת POST לשרת עם הנתונים מהטופס
             var response = await client.PostAsJsonAsync("Users/Register", user);
             if (response.IsSuccessStatusCode)
             {
                 SuccessMessage = "הרישום בוצע בהצלחה!";
-                Navigation.NavigateTo("/login");
+                Navigation.NavigateTo("/login"); // מעבר לעמוד התחברות
             }
             else
             {
@@ -87,6 +101,4 @@
             Message = $"אירעה שגיאה: {ex.Message}";
         }
     }
-
-   
 }

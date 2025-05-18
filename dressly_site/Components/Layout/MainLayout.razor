@@ -3,14 +3,16 @@
 @inject ClassLibrary1.Services.LoginSession LoginSession
 @inject IJSRuntime JSRuntime
 
+<!-- קובע את מבנה התצוגה הכללי של האתר – הוא מציג סרגל ניווט עליון מותאם -->
+
 <div class="page">
-    <!-- 🔝 סרגל ניווט ממורכז -->
+    <!-- סרגל ניווט  -->
     <header class="navbar navbar-light bg-white border-bottom shadow-sm py-2">
         <div class="container-fluid d-flex justify-content-center">
             <div class="nav-wrapper d-flex gap-2 flex-wrap justify-content-center align-items-center">
 
 
-                @if (IsAuthenticated && UserRole != "Admin")
+                @if (IsAuthenticated && UserRole != "Admin") //סרגל ניווט למשתמש עם כל הפונקציות
                 {
                     <button class="btn btn-link nav-btn" @onclick="NavigateToHome">🏠 בית</button>
                     <button class="btn btn-link nav-btn" @onclick="NavigateToAddItem">➕ הוספת פריט</button>
@@ -20,7 +22,7 @@
                     <button class="btn btn-outline-danger btn-sm ms-2" @onclick="Logout">🚪 התנתקות</button>
                 }
 
-                    @if ( UserRole == "Admin")
+                    @if ( UserRole == "Admin")// סרגל ניווט לאדמין עם פונקציות המנהל
                     {
                         <button class="btn btn-link nav-btn text-danger" @onclick="NavigateToUserManagement">🛠 לוח ניהול</button>
                      
@@ -81,7 +83,7 @@
     private void NavigateToUserManagement() => Navigation.NavigateTo("admin-dashboard");
     private void NavigateToLogin() => Navigation.NavigateTo("/login");
 
-    private async Task Logout()
+    private async Task Logout() // התנתקות מהאתר
     {
         await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "username");
         await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "role");

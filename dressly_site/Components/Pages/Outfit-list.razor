@@ -1,15 +1,15 @@
-﻿@page "/outfit-list"
-@inject IConfiguration Configuration
-@inject NavigationManager Navigation
-@inject HttpClient Http
-@inject ClassLibrary1.Services.LoginSession LoginSession
-@inject IJSRuntime JSRuntime
+﻿@page "/outfit-list" 
+@inject IConfiguration Configuration // מאפשר גישה להגדרות כלליות (appsettings.json)
+@inject NavigationManager Navigation // מאפשר ניווט בין עמודים
+@inject HttpClient Http // מאפשר שליחת בקשות HTTP ל־API
+@inject ClassLibrary1.Services.LoginSession LoginSession // שירות שמכיל את פרטי ההתחברות של המשתמש הנוכחי
 @using ClassLibrary1.Models
-@using ClassLibrary1.DTOs
+@using ClassLibrary1.DTOs 
 
 <div class="container py-5 text-center">
     <h2 class="fw-bold text-pink mb-4">✨ האאוטפיטים שלי</h2>
 
+    <!-- תיבת סינון להצגת כל האאוטפיטים או רק המועדפים -->
     <div class="d-flex justify-content-center mb-4">
         <div class="text-end" dir="rtl" style="max-width: 300px; width: 100%;">
             <label for="outfit-filter" class="form-label fw-semibold">בחר תצוגה:</label>
@@ -20,17 +20,17 @@
         </div>
     </div>
 
+    <!-- כרטיסיות אאוטפיטים -->
     <div class="row row-cols-1 row-cols-md-2 g-4 justify-content-center">
-        @foreach (var outfit in FilterOutfits(outfits, outfitFilter))
+        @foreach (var outfit in FilterOutfits(outfits, outfitFilter)) // עובר על כל האאוטפיטים אחרי סינון לפי סוג
         {
             <div class="col">
-                <div class="card border-0 shadow-sm p-3 text-center h-100"
-                     @onmouseover="() => ShowFavoriteButton(outfit)"
-                     @onmouseleave="() => HideFavoriteButton(outfit)">
+                <div class="card border-0 shadow-sm p-3 text-center h-100">
+                    <!-- הצגת תמונות פריטי הלבוש באאוטפיט -->
                     <div class="d-flex justify-content-center flex-wrap mb-3">
-                        @if (outfit.ClothingItemIDs?.Any() == true)
+                        @if (outfit.ClothingItemIDs?.Any() == true) // אם יש פריטים באאוטפיט
                         {
-                            @foreach (var itemId in outfit.ClothingItemIDs)
+                            @foreach (var itemId in outfit.ClothingItemIDs) // מציג כל פריט
                             {
                                 <img src="@GetImageUrl(itemId)" alt="Clothing Item"
                                      class="rounded me-1 mb-2"
@@ -43,31 +43,31 @@
                         }
                     </div>
 
+                    <!-- שם האאוטפיט + כפתורים להוספה למועדפים ומחיקה -->
                     <div>
                         <h5 class="mb-1">@outfit.Name</h5>
 
-                        @if (outfitFilter == "All")
+                        @if (outfitFilter == "All") // כפתורים מוצגים רק אם מוצגים כל האאוטפיטים
                         {
-                            @if (!outfit.IsFavorite)
+                            @if (!favoriteOutfitIds.Contains(outfit.OutfitID)) // אם לא במועדפים – הצג כפתור הוספה
                             {
                                 <button class="btn btn-sm rounded-pill mt-2"
-                                        style="background-color: rosybrown; color: white; font-weight: 500; display:@(outfit.IsHovered ? "inline-block" : "none")"
+                                        style="background-color: rosybrown; color: white; font-weight: 500"
                                         @onclick="async () => await AddToFavorites(outfit)">
                                     הוסף למועדפים 💖
                                 </button>
                             }
-                            else
+                            else // אם כבר במועדפים – הצג כפתור הסרה
                             {
                                 <button class="btn btn-sm rounded-pill mt-2"
-                                        style="background-color: #ccc; color: black; font-weight: 500; display:@(outfit.IsHovered ? "inline-block" : "none")"
+                                        style="background-color: #ccc; color: black; font-weight: 500"
                                         @onclick="async () => await RemoveFromFavorites(outfit)">
                                     הסר ממועדפים 💔
                                 </button>
                             }
 
-                            <button class="btn btn-sm btn-outline-danger mt-2 ms-2"
-                                    style="display:@(outfit.IsHovered ? "inline-block" : "none")"
-                                    @onclick="() => DeleteOutfit(outfit.OutfitID)">
+                            <!-- כפתור מחיקת האאוטפיט -->
+                            <button class="btn btn-sm btn-outline-danger mt-2 ms-2" @onclick="() => ShowDeleteConfirmation(outfit.OutfitID)">
                                 🗑 מחק אאוטפיט
                             </button>
                         }
@@ -77,6 +77,7 @@
         }
     </div>
 
+    <!-- הודעה אם אין אאוטפיטים -->
     @if (!outfits.Any())
     {
         <div class="mt-4 text-muted">
@@ -84,46 +85,62 @@
         </div>
     }
 
-    @if (outfitSelection.IsUpdated)
+    <!-- הודעת הצלחה לאחר עדכון -->
+    @if (outfitSelectionIsUpdated)
     {
         <div class="mt-4 alert alert-success">
             <h6 class="mb-0">✨ העדכון בוצע בהצלחה!</h6>
         </div>
     }
+
+    <!-- מודל אישור מחיקה -->
+    @if (showConfirmationDialog)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">אישור מחיקה</h5>
+                    </div>
+                    <div class="modal-body">
+                        <p>האם את בטוחה שתרצי למחוק את האאוטפיט?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" @onclick="() => showConfirmationDialog = false">ביטול</button>
+                        <button class="btn btn-danger" @onclick="ConfirmDelete">מחק</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
-    private OutfitSelection outfitSelection = new();
-    private List<Outfit> outfits = new();
-    private Dictionary<int, int> itemIdToImageId = new(); // ItemID → ImageID
-    private string outfitFilter = "All";
+    private bool outfitSelectionIsUpdated = false; // האם בוצע עדכון
+    private List<Outfit> outfits = new(); // כל האאוטפיטים של המשתמש
+    private Dictionary<int, int> itemIdToImageId = new(); // מיפוי בין מזהה פריט למזהה תמונה
+    private HashSet<int> favoriteOutfitIds = new(); // מזהים של אאוטפיטים מועדפים
+    private string outfitFilter = "All"; // סינון נוכחי (All או Favorites)
 
+    private bool showConfirmationDialog = false; // האם להציג חלון אישור מחיקה
+    private int outfitIdToDelete; // מזהה האאוטפיט למחיקה
+
+    // טעינת נתונים עם טעינת העמוד
     protected override async Task OnInitializedAsync()
     {
         await LoadOutfits();
     }
 
+    // שליפת כל הנתונים מהשרת: אאוטפיטים, פריטים ותמונות, ומועדפים
     private async Task LoadOutfits()
     {
         try
         {
-            outfits = await Http.GetFromJsonAsync<List<Outfit>>(
-                $"http://localhost:5177/api/outfits/get-user-outfits?userId={LoginSession.UserID}");
-
-            var items = await Http.GetFromJsonAsync<List<ClothingItem>>(
-                $"http://localhost:5177/api/clothingitems/user/{LoginSession.UserID}");
-
-            itemIdToImageId = items
-                .Where(i => i.ImageID.HasValue)
-                .ToDictionary(i => i.ItemID, i => i.ImageID.Value);
-
-            var favorites = await Http.GetFromJsonAsync<List<int>>(
-                $"http://localhost:5177/api/outfits/get-favorites/{LoginSession.UserID}");
-
-            foreach (var outfit in outfits)
-            {
-                outfit.IsFavorite = favorites.Contains(outfit.OutfitID);
-            }
+            outfits = await Http.GetFromJsonAsync<List<Outfit>>($"http://localhost:5177/api/outfits/get-user-outfits?userId={LoginSession.UserID}");
+            var items = await Http.GetFromJsonAsync<List<ClothingItem>>($"http://localhost:5177/api/clothingitems/user/{LoginSession.UserID}");
+            itemIdToImageId = items.Where(i => i.ImageID.HasValue).ToDictionary(i => i.ItemID, i => i.ImageID.Value);
+            var favorites = await Http.GetFromJsonAsync<List<int>>($"http://localhost:5177/api/outfits/get-favorites/{LoginSession.UserID}");
+            favoriteOutfitIds = favorites.ToHashSet();
         }
         catch (Exception ex)
         {
@@ -131,6 +148,7 @@
         }
     }
 
+    // מחזיר את כתובת התמונה לפי מזהה פריט
     private string GetImageUrl(int itemId)
     {
         return itemIdToImageId.TryGetValue(itemId, out int imageId)
@@ -138,46 +156,39 @@
             : "https://via.placeholder.com/80?text=No+Image";
     }
 
+    // הוספת אאוטפיט למועדפים
     private async Task AddToFavorites(Outfit outfit)
     {
-        outfit.IsFavorite = true;
-
-        var dto = new FavoriteDto
-        {
-            UserID = LoginSession.UserID,
-            OutfitID = outfit.OutfitID
-        };
-
+        var dto = new FavoriteDto { UserID = LoginSession.UserID, OutfitID = outfit.OutfitID };
         var response = await Http.PostAsJsonAsync("http://localhost:5177/api/outfits/add-favorite", dto);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            Console.WriteLine("❌ שגיאה בהוספת מועדף");
-        }
+        if (response.IsSuccessStatusCode) favoriteOutfitIds.Add(outfit.OutfitID);
+        else Console.WriteLine("❌ שגיאה בהוספת מועדף");
     }
 
+    // הסרת אאוטפיט ממועדפים
     private async Task RemoveFromFavorites(Outfit outfit)
     {
-        outfit.IsFavorite = false;
-
-        var response = await Http.DeleteAsync(
-            $"http://localhost:5177/api/outfits/remove-favorite?userId={LoginSession.UserID}&outfitId={outfit.OutfitID}");
-
-        if (!response.IsSuccessStatusCode)
-        {
-            Console.WriteLine("❌ שגיאה בהסרת מועדף");
-        }
+        var response = await Http.DeleteAsync($"http://localhost:5177/api/outfits/remove-favorite?userId={LoginSession.UserID}&outfitId={outfit.OutfitID}");
+        if (response.IsSuccessStatusCode) favoriteOutfitIds.Remove(outfit.OutfitID);
+        else Console.WriteLine("❌ שגיאה בהסרת מועדף");
     }
 
-    private async Task DeleteOutfit(int outfitId)
+    // הצגת חלון אישור למחיקת אאוטפיט
+    private void ShowDeleteConfirmation(int outfitId)
     {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "האם את בטוחה שתרצי למחוק את האאוטפיט?");
-        if (!confirmed) return;
+        outfitIdToDelete = outfitId;
+        showConfirmationDialog = true;
+    }
 
-        var response = await Http.DeleteAsync($"http://localhost:5177/api/outfits/delete/{outfitId}");
+    // אישור ומחיקת האאוטפיט מהשרת ומהרשימה
+    private async Task ConfirmDelete()
+    {
+        showConfirmationDialog = false;
+        var response = await Http.DeleteAsync($"http://localhost:5177/api/outfits/delete/{outfitIdToDelete}");
         if (response.IsSuccessStatusCode)
         {
-            outfits.RemoveAll(o => o.OutfitID == outfitId);
+            outfits.RemoveAll(o => o.OutfitID == outfitIdToDelete);
+            favoriteOutfitIds.Remove(outfitIdToDelete);
             Console.WriteLine("✅ האאוטפיט נמחק");
         }
         else
@@ -186,36 +197,11 @@
         }
     }
 
-    private void ShowFavoriteButton(Outfit outfit) => outfit.IsHovered = true;
-    private void HideFavoriteButton(Outfit outfit) => outfit.IsHovered = false;
-
+    // מסנן את רשימת האאוטפיטים לפי בחירת המשתמש
     private IEnumerable<Outfit> FilterOutfits(List<Outfit> outfits, string filter)
     {
         return filter == "Favorites"
-            ? outfits.Where(o => o.IsFavorite)
+            ? outfits.Where(o => favoriteOutfitIds.Contains(o.OutfitID))
             : outfits;
-    }
-
-    public class OutfitSelection
-    {
-        public bool IsUpdated { get; set; } = false;
-    }
-
-    public class Outfit
-    {
-        public int OutfitID { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public List<int> ClothingItemIDs { get; set; } = new();
-        public bool IsFavorite { get; set; }
-        public bool IsHovered { get; set; }
-    }
-
-    public class ClothingItem
-    {
-        public int ItemID { get; set; }
-        public int? ImageID { get; set; }
-        public string Category { get; set; }
-        public string ColorName { get; set; }
     }
 }

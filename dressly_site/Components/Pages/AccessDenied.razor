@@ -1,6 +1,7 @@
 ﻿@page "/access-denied"
-
+<!--דף זה מוצג למשתמשים שמנסים לגשת לעמוד או פעולה שאין להם הרשאה אליהם-->
 @inject ClassLibrary1.Services.LoginSession LoginSession
+
 
 <h3 style="text-align: center; direction: rtl;">שגיאה בהרשאות</h3>
 
@@ -10,12 +11,10 @@
 
 <p style="text-align: center; direction: rtl;">
     @{
-        // התאמת המסר על פי התפקיד
-        string message = LoginSession.Role switch
+        // בודק את התפקיד של המשתמש ומחזיר הודעה מותאמת
+        string message = LoginSession.Role switch 
         {
-            "Guest" => "כאורח אין לך גישה לדף זה.",
             "User" => "כמשתמש אין לך גישה לדף זה.",
-            "Admin" => "כמנהל אין לך גישה לדף זה.",
             _ => "אין לך גישה לדף זה."
         };
     }

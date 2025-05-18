@@ -10,6 +10,7 @@
 
             <h2 class="card-title text-center mb-4">הוספת פריט לבוש</h2>
 
+            <!--  שלב ראשון: הזנת פרטים -->
             @if (!isStep1Completed)
             {
                 <h5 class="text-muted mb-4 text-center">שלב 1 מתוך 2: הזנת פרטי הפריט</h5>
@@ -17,6 +18,7 @@
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
+                    <!--  בחירת קטגוריית פריט -->
                     <div class="mb-3">
                         <label for="category" class="form-label">:בחר סוג פריט</label>
                         <InputSelect id="category" class="form-select" @bind-Value="clothingItem.Category">
@@ -29,16 +31,12 @@
                             <option value="Accessories">אקססוריז</option>
                             <option value="Top">גופייה</option>
                             <option value="Jacket">גקט</option>
-
-
-
-
-
-
                         </InputSelect>
                         <ValidationMessage For="@(() => clothingItem.Category)" />
                     </div>
 
+
+                    <!--  בחירת עונה -->
                     <div class="mb-3">
                         <label for="season" class="form-label">:בחר עונה</label>
                         <InputSelect id="season" class="form-select" @bind-Value="clothingItem.Season">
@@ -51,6 +49,8 @@
                         <ValidationMessage For="@(() => clothingItem.Season)" />
                     </div>
 
+
+                    <!-- בחירת סוג שימוש -->
                     <div class="mb-3">
                         <label for="usageType" class="form-label">:בחר סוג שימוש</label>
                         <InputSelect id="usageType" class="form-select" @bind-Value="clothingItem.UsageType">
@@ -61,6 +61,8 @@
                         <ValidationMessage For="@(() => clothingItem.UsageType)" />
                     </div>
 
+
+                    <!--  בחירת צבע -->
                     <div class="mb-3">
                         <label for="color" class="form-label">:בחר צבע</label>
                         <InputSelect id="color" class="form-select" @bind-Value="clothingItem.ColorName">
@@ -85,6 +87,8 @@
                     </div>
                 </EditForm>
             }
+
+            <!-- שלב שני : העלאת תמונה -->
             else if (!isComplete)
             {
                 <h5 class="text-muted mb-4 text-center">מעולה! עכשיו רק נותר להעלות תמונה של הפריט</h5>
@@ -102,6 +106,9 @@
         </div>
     </div>
 </div>
+
+
+
 
 <style>
     .btn-pink {
@@ -122,11 +129,12 @@
 </style>
 
 @code {
-    private ClothingItem clothingItem = new ClothingItem();
-    private IBrowserFile selectedFile;
-    private bool isStep1Completed = false;
+    private ClothingItem clothingItem = new ClothingItem(); // מודל הפריט החדש
+    private IBrowserFile selectedFile; // הקובץ שנבחר על ידי המשתמש
+    private bool isStep1Completed = false; 
     private bool isComplete = false;
 
+    // שלב 1 - שליחת פרטי התמונה לאיפיאי
     private async Task HandleStep1Submit()
     {
         Console.WriteLine("🔍 התחלת שלב 1");
@@ -160,6 +168,7 @@
         }
     }
 
+    //  שלב 2 - העלאת תמונה לפריט החדש
     private async Task HandleUploadImage()
     {
         if (selectedFile != null)
@@ -197,6 +206,7 @@
         }
     }
 
+    // שמירת הקובץ שנבחר
     private void HandleFileSelected(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;

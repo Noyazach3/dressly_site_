@@ -34,7 +34,7 @@ namespace dressly_site
                 return httpClient;
             });
 
-            // ✅ הוספת IHttpClientFactory – מאפשר להשתמש ב-ClientFactory בעמודים (כמו Signup)
+            //  הוספת IHttpClientFactory – מאפשר להשתמש ב-ClientFactory בעמודים (כמו Signup)
             builder.Services.AddHttpClient();
 
             // תמיכה ב-Controllers עבור API פנימי בתוך ה-Blazor App

@@ -1,5 +1,5 @@
 ﻿@page "/"
-
+<!-- עמוד כניסה-->
 @using BootstrapBlazor.Components
 @inject NavigationManager Navigation
 
@@ -13,7 +13,7 @@
             style="background-color: rosybrown; border: none; font-size: 1.25em; font-weight: bold; box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2); transform: translateY(0); transition: transform 0.2s ease;"
             onmouseover="this.style.transform='translateY(-3px)';"
             onmouseout="this.style.transform='translateY(0px)';"
-            @onclick="NavigateToLogin">
+            @onclick="NavigateToLogin"> <!--כפתור לכניסה-->
         Login
     </button>
 
@@ -21,7 +21,7 @@
             style="background-color: rosybrown; border: none; font-size: 1.25em; font-weight: bold; box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2); transform: translateY(0); transition: transform 0.2s ease;"
             onmouseover="this.style.transform='translateY(-3px)';"
             onmouseout="this.style.transform='translateY(0px)';"
-            @onclick="NavigateToSignup">
+            @onclick="NavigateToSignup"> <!--כפתור להירשמות-->
         Sign Up
     </button>
 </div>

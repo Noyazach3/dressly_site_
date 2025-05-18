@@ -1,14 +1,15 @@
-﻿@page "/outfit-planner-thematic"
-@inject HttpClient Http
-@inject ClassLibrary1.Services.LoginSession LoginSession
-@inject NavigationManager Navigation
-@using ClassLibrary1.Models
-@using ClassLibrary1.DTOs
-@using System.Net.Http.Json
+﻿@page "/outfit-planner-thematic" 
+@inject HttpClient Http // מאפשר שליחת בקשות ל-API
+@inject ClassLibrary1.Services.LoginSession LoginSession // מכיל את מזהה המשתמש המחובר
+@inject NavigationManager Navigation // מאפשר ניווט לעמודים אחרים
+@using ClassLibrary1.Models 
+@using ClassLibrary1.DTOs 
+@using System.Net.Http.Json 
 
 <div class="container py-5 text-center" style="max-width: 1000px;">
     <h2 class="fw-bold text-pink mb-3">✨ תכנון אאוטפיט לפי נושא</h2>
 
+    <!-- טופס בחירת עונה וסגנון -->
     <EditForm Model="@outfitSelection" OnValidSubmit="HandleValidSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
@@ -38,14 +39,15 @@
         </button>
     </EditForm>
 
+    <!-- הצגת כרטיסיות פריטים לפי הסגנון שנבחר -->
     @if (showItems)
     {
-        @foreach (var category in categoriesToShow)
+        @foreach (var category in categoriesToShow) // עבור כל קטגוריה רלוונטית (לפי סגנון)
         {
             var itemsForCategory = clothingItems.Where(i => i.Category == category).ToList();
             if (!itemsForCategory.Any())
             {
-                continue;
+                continue; // דלג אם אין פריטים לקטגוריה
             }
 
             <div class="mb-5 text-end" dir="rtl">
@@ -54,11 +56,13 @@
                     @foreach (var item in itemsForCategory)
                     {
                         <div class="col">
+                            <!-- קלף פריט לבוש -->
                             <div class="card border-2 @(IsItemSelected(item) ? "border-pink shadow" : "border-0 shadow-sm") small-card"
                                  @onclick="() => SelectItem(item)">
                                 @if (item.ImageID.HasValue && imageCache.ContainsKey(item.ItemID))
                                 {
-                                    <img src="@($"data:image/jpeg;base64,{imageCache[item.ItemID]}")" class="w-100 object-fit-cover rounded-top" style="height: 130px;" />
+                                    <img src="@($"data:image/jpeg;base64,{imageCache[item.ItemID]}")"
+                                         class="w-100 object-fit-cover rounded-top" style="height: 130px;" />
                                 }
                                 <div class="card-body py-2 px-2">
                                     <p class="card-text small text-muted mb-0">@item.Category - @item.ColorName</p>
@@ -70,6 +74,7 @@
             </div>
         }
 
+        <!-- כפתור לשמירת האאוטפיט -->
         <div class="text-center mt-4">
             <button class="btn btn-sm px-4 py-2 rounded-pill"
                     style="background-color: rosybrown; color: white; font-weight: 600;"
@@ -80,6 +85,7 @@
     }
 </div>
 
+<!-- עיצוב למסגרת ורודה של פריט נבחר -->
 <style>
     .border-pink {
         border: 3px solid #ec87b8 !important;
@@ -88,23 +94,27 @@
 </style>
 
 @code {
-    private OutfitSelection outfitSelection = new();
-    private List<ClothingItem> clothingItems = new();
-    private Dictionary<int, string> imageCache = new();
-    private List<string> categoriesToShow = new();
-    private bool showItems = false;
+    private OutfitSelection outfitSelection = new(); // אובייקט שמכיל את העונה, הסגנון והפריטים שנבחרו
+    private List<ClothingItem> clothingItems = new(); // כל פריטי הלבוש המתאימים לעונה
+    private Dictionary<int, string> imageCache = new(); // תמונות של פריטים (ב-base64)
+    private List<string> categoriesToShow = new(); // רשימת הקטגוריות להצגה לפי הסגנון
+    private bool showItems = false; // האם להציג את שלב בחירת הפריטים
 
+    // בעת שליחת הטופס - שליפת פריטים מתאימים מהשרת
     private async Task HandleValidSubmit()
     {
         showItems = false;
 
+        // שליפת כל הפריטים של המשתמש
         clothingItems = await Http.GetFromJsonAsync<List<ClothingItem>>(
             $"api/clothingitems/user/{LoginSession.UserID}");
 
+        // סינון לפי עונה (או ניטרליים)
         clothingItems = clothingItems
             .Where(i => i.Season == outfitSelection.Season || i.Season == "Neutral")
             .ToList();
 
+        // הגדרת הקטגוריות שיוצגו בהתאם לסגנון הנבחר
         categoriesToShow = outfitSelection.Style switch
         {
             1 => new() { "Shirt", "Pants" },
@@ -113,9 +123,11 @@
             _ => new()
         };
 
+        // תמיד מוסיפים נעליים ואקססוריז
         if (!categoriesToShow.Contains("Shoes")) categoriesToShow.Add("Shoes");
         if (!categoriesToShow.Contains("Accessories")) categoriesToShow.Add("Accessories");
 
+        // טעינת התמונות
         imageCache.Clear();
         foreach (var item in clothingItems)
         {
@@ -126,24 +138,27 @@
                     var imageBytes = await Http.GetByteArrayAsync($"api/image/{item.ImageID}");
                     imageCache[item.ItemID] = Convert.ToBase64String(imageBytes);
                 }
-                catch { }
+                catch { /* התעלמות משגיאה */ }
             }
         }
 
-        showItems = true;
+        showItems = true; // הצגת רשימת הפריטים
     }
 
+    // בחירת פריט לאאוטפיט
     private void SelectItem(ClothingItem item)
     {
         outfitSelection.SelectedItems[item.Category] = item;
     }
 
+    // בדיקה האם פריט מסוים נבחר
     private bool IsItemSelected(ClothingItem item)
     {
         return outfitSelection.SelectedItems.TryGetValue(item.Category, out var selected) &&
                selected.ItemID == item.ItemID;
     }
 
+    // שליחת האאוטפיט לשרת
     private async Task SaveOutfit()
     {
         try
@@ -183,6 +198,7 @@
         }
     }
 
+    // תרגום קטגוריות לעברית
     private string GetCategoryLabel(string category) => category switch
     {
         "Shirt" => "חולצה",
@@ -195,10 +211,5 @@
         _ => category
     };
 
-    public class OutfitSelection
-    {
-        public string Season { get; set; } = "Summer";
-        public int Style { get; set; } = 1;
-        public Dictionary<string, ClothingItem> SelectedItems { get; set; } = new();
-    }
+    
 }

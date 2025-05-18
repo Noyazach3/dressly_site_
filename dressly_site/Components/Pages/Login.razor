@@ -64,7 +64,7 @@
 </div>
 
 @code {
-    private User loginRequest = new User();
+    private User loginRequest = new User(); //נתוני התחברות
     private string Message;
 
 
@@ -72,15 +72,16 @@
     {
         try
         {
-
+            // שליחת פרטי התחברות לשרת
             var response = await Http.PostAsJsonAsync("api/Users/Login", loginRequest);
             if (response.IsSuccessStatusCode)
             {
+                // קריאת המשתמש שחזר
                 var user = await response.Content.ReadFromJsonAsync<UserInfoModel>();
                 if (user != null)
                 {
-                    LoginSession.SetLoginDetails(user.UserID, user.Username, user.Email, user.Role);
-                    Navigation.NavigateTo(user.Role == "Admin" ? "/admin-dashboard" : "/home");
+                    LoginSession.SetLoginDetails(user.UserID, user.Username, user.Email, user.Role); // שמירת נתוני התחברות
+                    Navigation.NavigateTo(user.Role == "Admin" ? "/admin-dashboard" : "/home"); //ניווט לפי תפקיד
                 }
             
 

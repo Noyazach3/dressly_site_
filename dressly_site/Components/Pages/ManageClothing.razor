@@ -68,8 +68,9 @@
     }
 </style>
 
-<h3 class="text-center fw-bold my-4">👕 ניהול כל פריטי הלבוש במערכת</h3>
+<h3 class="text-center fw-bold my-4">👕 ניהול כל פריטי הלבוש במערכת</h3> 
 
+<!--  טעינת נתונים / הצגת טבלה -->
 @if (clothingItems == null)
 {
     <p class="text-center text-muted">🔄 טוען פרטי לבוש...</p>
@@ -80,6 +81,7 @@ else if (!clothingItems.Any())
 }
 else
 {
+    // טבלת הבגדים
     <div class="table-container">
         <table class="table table-hover table-striped text-center align-middle">
             <thead>
@@ -121,8 +123,9 @@ else
 }
 
 @code {
-    private List<ClothingItem> clothingItems = new();
+    private List<ClothingItem> clothingItems = new(); //רשימת כל פריטי הלבוש
 
+    //טעינת הבגדים עם טעינת העמוד
     protected override async Task OnInitializedAsync()
     {
         try
@@ -135,6 +138,8 @@ else
         }
     }
 
+
+    //מחיקת פריט לפי מזהה
     private async Task DeleteClothingItem(int itemId)
     {
         var response = await Http.DeleteAsync($"api/clothingitems/{itemId}");

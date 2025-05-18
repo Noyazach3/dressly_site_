@@ -4,11 +4,16 @@
 @inject ClassLibrary1.Services.LoginSession LoginSession
 @using ClassLibrary1.Models
 
+<!--עמוד הבית-->
+
 <div class="dashboard-container">
-    <h1 class="welcome-title">!ברוכה הבאה, @LoginSession.Username</h1>
+
+    <!--  כותרת ברוכה הבאה עם שם המשתמש -->
+    <h1 class="welcome-title">!ברוכה הבאה, @LoginSession.Username</h1> 
 
     @if (welcomeMessageVisible)
     {
+        <!--  הודעת פתיחה-->
         <div class="welcome-popup shadow">
             <h5> !DRESSLY - ברוכים הבאים ל</h5>
             <p>
@@ -20,6 +25,7 @@
         </div>
     }
 
+    <!--שלוש כרטיסיות נתונים-->
     <div class="cards-grid">
         <div class="dashboard-card">
             <h4> סה״כ פריטים בארון</h4>
@@ -143,6 +149,7 @@
     private string styleTip = string.Empty;
     private bool welcomeMessageVisible = true;
 
+    //  טוען נתוני פריטים ואאוטפיטים עם כניסת העמוד
     protected override async Task OnInitializedAsync()
     {
         try
@@ -155,7 +162,7 @@
                 $"api/outfits/get-user-outfits?userId={LoginSession.UserID}");
             outfitCount = outfits?.Count ?? 0;
 
-            styleTip = GetDailyTip();
+            styleTip = GetDailyTip(); //  טיפ אקראי  
         }
         catch (Exception ex)
         {
@@ -163,6 +170,7 @@
         }
     }
 
+    // (טיפ אקראי (לפי ימי השבוע
     private string GetDailyTip()
     {
         var tips = new[]
@@ -177,13 +185,4 @@
         return tips[DateTime.Today.Day % tips.Length];
     }
 
-    public class Outfit
-    {
-        public int OutfitID { get; set; }
-    }
-
-    public class ClothingItem
-    {
-        public int ItemID { get; set; }
-    }
 }
