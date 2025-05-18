@@ -1,5 +1,10 @@
 ﻿namespace ClassLibrary1.DTOs
 {
+    // DTO – Data Transfer Object: 
+    // מחלקה זו משמשת כ"אמצעי העברה" של נתונים בין החזית (Blazor) לבין השרת (API),
+    // כאשר משתמש נרשם למערכת – היא כוללת את שם המשתמש, אימייל, סיסמה (מוצפנת מראש),
+    // ותפקיד המשתמש (ברירת מחדל: "User").
+
     public class RegisterModel
     {
         public int UserID { get; set; }

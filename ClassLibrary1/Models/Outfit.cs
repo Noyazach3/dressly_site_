@@ -16,7 +16,6 @@ namespace ClassLibrary1.Models
 
 
         public User User { get; set; }
-        public Event Event { get; set; }
         public ICollection<OutfitItem> OutfitItems { get; set; }
         public ICollection<Favorite> Favorites { get; set; }
     }

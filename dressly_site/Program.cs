@@ -1,6 +1,5 @@
 ﻿using dressly_site2.Components;
 using ClassLibrary1.Services; // שירותים כלליים שמשותפים לכל הפרויקט (לוגיקה עסקית, מחלקות עזר)
-using API.Services; // שירותים מתוך ה-API לצורך שימוש פנימי ב-Blazor
 
 namespace dressly_site
 {
@@ -10,8 +9,6 @@ namespace dressly_site
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // הרשמת שירות שמתעסק בניהול בגדים – משותף בין API ו-Blazor
-            builder.Services.AddScoped<ClothingService>();
 
             // הרשמת תמיכה ב-Razor Pages ורכיבי Blazor אינטראקטיביים
             builder.Services.AddRazorComponents()

@@ -2,6 +2,7 @@
 
 namespace ClassLibrary1.Models
 {
+    // לא בשימוש, לשימוש עתידי
     public class ClothingItemTag
     {
         [Key]

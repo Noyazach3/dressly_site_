@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,20 +18,18 @@ namespace API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // ✅ 1. רישום חיבור למסד הנתונים - טעינה רק כאשר צריך
+            //  1. רישום חיבור למסד הנתונים - טעינה רק כאשר צריך
             builder.Services.AddScoped<MySqlConnection>(_ =>
                 new MySqlConnection(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // ✅ 2. הוספת שירותים
-            builder.Services.AddScoped<IAdminService, AdminService>();
-            builder.Services.AddScoped<IUserService, UserService>();
+            //  2. הוספת שירותים
             builder.Services.AddScoped<LoginSession, LoginSession>();
             builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
-            // ✅ 3. הוספת IConfiguration
+            //  3. הוספת IConfiguration
             builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
-            // ✅ 4. הוספת Controllers עם טיפול בבעיות סדר ב-JSON
+            //  4. הוספת Controllers עם טיפול בבעיות סדר ב-JSON
             builder.Services.AddControllers().AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -41,7 +38,7 @@ namespace API
             });
 
 
-            // ✅ 5. הוספת Swagger עם פתרון לקונפליקטים של שמות מודלים
+            //  5. הוספת Swagger עם פתרון לקונפליקטים של שמות מודלים
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(options =>
             {
@@ -57,7 +54,7 @@ namespace API
 
             var app = builder.Build();
 
-            // ✅ 6. Middleware של Swagger
+            //  6. Middleware של Swagger
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -68,13 +65,13 @@ namespace API
                 });
             }
 
-            // ✅ 7. Middleware של אבטחה והרשאות
+            //  7. Middleware של אבטחה והרשאות
             app.UseRouting();
             app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();
 
-            // ✅ 8. מיפוי הבקרים
+            //  8. מיפוי הבקרים
             app.MapControllers();
 
             app.Run();

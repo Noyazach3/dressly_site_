@@ -19,6 +19,5 @@ namespace ClassLibrary1.Models
         public ICollection<ClothingItem> ClothingItems { get; set; }
         public ICollection<Outfit> Outfits { get; set; }
         public ICollection<Favorite> Favorites { get; set; }
-        public ICollection<Event> Events { get; set; }
     }
 }

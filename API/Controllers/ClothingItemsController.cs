@@ -18,12 +18,13 @@ namespace API.Controllers
     {
         private readonly IConfiguration _configuration;
 
+        //(appsettings.json) כדי להתחבר למסד
         public ClothingItemsController(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
-        [HttpGet]
+        [HttpGet] //שליפת כל פרטי הלבוש
         public async Task<IActionResult> GetClothingItems()
         {
             var items = new List<ClothingItem>();
@@ -35,13 +36,13 @@ namespace API.Controllers
                 {
                     await connection.OpenAsync();
                     string query = @"
-            SELECT c.ItemID, c.UserID, c.Category, c.Season, c.UsageType, c.ColorName, c.ImageID
-            FROM clothingitems c";
+                           SELECT c.ItemID, c.UserID, c.Category, c.Season, c.UsageType, c.ColorName, c.ImageID 
+                           FROM clothingitems c"; // שאילתת SQL לשליפת נתוני הבגדים
 
                     using (var command = new MySqlCommand(query, connection))
                     using (var reader = await command.ExecuteReaderAsync())
                     {
-                        while (await reader.ReadAsync())
+                        while (await reader.ReadAsync()) //יצירת אובייקט
                         {
                             var item = new ClothingItem
                             {
@@ -62,7 +63,7 @@ namespace API.Controllers
                     }
                 }
 
-                return Ok(items);
+                return Ok(items); //מחזיר את רשימת הבגדים לבלייזור
             }
             catch (Exception ex)
             {
@@ -70,7 +71,8 @@ namespace API.Controllers
             }
         }
 
-        [HttpGet("user/{userId}")]
+        
+        [HttpGet("user/{userId}")] //שליפת כל פרטי הלבוש של משתמש ספציפי
         public async Task<IActionResult> GetClothingItemsForUser(int userId)
         {
             var items = new List<ClothingItem>();
@@ -82,9 +84,9 @@ namespace API.Controllers
                 {
                     await connection.OpenAsync();
                     string query = @"
-                SELECT c.ItemID, c.Category, c.Season, c.UsageType, c.ColorName, c.ImageID
-                FROM clothingitems c
-                WHERE c.UserID = @UserID";
+                           SELECT c.ItemID, c.Category, c.Season, c.UsageType, c.ColorName, c.ImageID
+                           FROM clothingitems c
+                           WHERE c.UserID = @UserID"; // שאילתת SQL לשליפת נתוני הבגדים
 
                     using (var command = new MySqlCommand(query, connection))
                     {
@@ -94,7 +96,7 @@ namespace API.Controllers
                         {
                             while (await reader.ReadAsync())
                             {
-                                var item = new ClothingItem
+                                var item = new ClothingItem //יצירת אובייקט
                                 {
                                     ItemID = reader.GetInt32(reader.GetOrdinal("ItemID")),
                                     Category = reader.GetString(reader.GetOrdinal("Category")),
@@ -113,7 +115,7 @@ namespace API.Controllers
                     }
                 }
 
-                return Ok(items);
+                return Ok(items); // מחזיר את הבגדים של המשתמש
             }
             catch (Exception ex)
             {
@@ -126,7 +128,7 @@ namespace API.Controllers
 
 
 
-        [HttpPost("addClothingItemAttributes")]
+        [HttpPost("addClothingItemAttributes")] //הוספת פריט לבוש (ללא תמונה)נ
         public async Task<IActionResult> AddClothingItemAttributes([FromBody] ClothingItemDto itemDto)
         {
             Console.WriteLine("🔥 start addClothingItemAttributes");
@@ -143,9 +145,9 @@ namespace API.Controllers
                     await connection.OpenAsync();
 
                     string insertQuery = @"
-                INSERT INTO clothingitems (UserID, Category, ColorName, Season, DateAdded, UsageType)
-                VALUES (@UserID, @Category, @ColorName, @Season, @DateAdded, @UsageType);
-                SELECT LAST_INSERT_ID();";
+                         INSERT INTO clothingitems (UserID, Category, ColorName, Season, DateAdded, UsageType)
+                         VALUES (@UserID, @Category, @ColorName, @Season, @DateAdded, @UsageType);
+                         SELECT LAST_INSERT_ID();"; // שאילתת SQL היוצרת פריט לבוש חדש
 
                     using (var command = new MySqlCommand(insertQuery, connection))
                     {
@@ -160,7 +162,7 @@ namespace API.Controllers
                     }
                 }
 
-                return Ok(newItemId);
+                return Ok(newItemId); // מחזיר את ה־ID של הפריט החדש 
             }
             catch (Exception ex)
             {
@@ -170,7 +172,7 @@ namespace API.Controllers
         }
 
 
-        [HttpPost("uploadImageForItem")]
+        [HttpPost("uploadImageForItem")] //העלאת תמונה לפריט קיים בעזרת ImageUploadDto
         public async Task<IActionResult> UploadImageForItem([FromForm] ImageUploadDto dto)
         {
             Console.WriteLine("📸 קיבלנו בקשה להעלאת תמונה לפריט " + dto.ItemID);
@@ -224,6 +226,9 @@ namespace API.Controllers
         }
 
 
+        // פעולת עזר שנועדה להמיר קובץ (למשל תמונה) שמתקבל מהמשתמש
+        // (IFormFile), לתוך מערך של בייטים
+        // (byte[]) – כדי שנוכל לשמור אותו במסד הנתונים.
         private async Task<byte[]> ConvertToByteArray(IFormFile file)
         {
             using (var memoryStream = new MemoryStream())
@@ -234,48 +239,10 @@ namespace API.Controllers
         }
 
 
-        // POST: api/ClothingItems/uploadImage
-        [HttpPost("uploadImage")]
-        public async Task<int> UploadImage(Image image)
-        {
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
 
-            try
-            {
-                using (var connection = new MySqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-                    string query = @"
-                        INSERT INTO images (OwnerID, ImageData, ImageType, UploadDate)
-                        VALUES (@OwnerID, @ImageData, @ImageType, @UploadDate)";
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@OwnerID", image.OwnerID);
-                        command.Parameters.AddWithValue("@ImageData", image.ImageData);
-                        command.Parameters.AddWithValue("@ImageType", image.ImageType);
-                        command.Parameters.AddWithValue("@UploadDate", image.UploadDate);
-                        await command.ExecuteNonQueryAsync();
-                    }
+        
 
-                    // קבלת ה-ImageID של התמונה שהוזנה
-                    string selectQuery = "SELECT LAST_INSERT_ID()";
-                    using (var command = new MySqlCommand(selectQuery, connection))
-                    {
-                        return Convert.ToInt32(await command.ExecuteScalarAsync());
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error uploading image", ex);
-            }
-        }
-
-     
-
-
-
-        // ✅ הוספת פריט לבוש למועדפים
+        //  הוספת פריט לבוש למועדפים
         [HttpPost("add-favorite")]
         public async Task<IActionResult> AddFavoriteItem([FromBody] FavoriteDto dto)
         {
@@ -285,12 +252,12 @@ namespace API.Controllers
                 using var connection = new MySqlConnection(connStr);
                 await connection.OpenAsync();
 
-                string query = @"INSERT INTO favorites (UserID, ItemID) VALUES (@UserID, @ItemID)";
-                using var cmd = new MySqlCommand(query, connection);
-                cmd.Parameters.AddWithValue("@UserID", dto.UserID);
-                cmd.Parameters.AddWithValue("@ItemID", dto.ItemID);
+                string query = @"INSERT INTO favorites (UserID, ItemID) VALUES (@UserID, @ItemID)";//שאילתה להוספת שורה לטבלת מעודפים עם מזהה המשתמש ומזהה הפריט
+                using var cmd = new MySqlCommand(query, connection); //יצירת הפקודה עם השאילתה והוספת הפרמטרים בצורה מאבטחת
+                cmd.Parameters.AddWithValue("@UserID", dto.UserID);//מזהה המשתמש שמוסיף מועדף 
+                cmd.Parameters.AddWithValue("@ItemID", dto.ItemID);// מזהה פריט הלבוש
 
-                await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync();// ביצוע השאילתה בפועל
                 return Ok(new { Message = "Item marked as favorite" });
             }
             catch (Exception ex)
@@ -299,7 +266,7 @@ namespace API.Controllers
             }
         }
 
-        // ✅ הסרת פריט לבוש ממועדפים
+        //  הסרת פריט לבוש ממועדפים
         [HttpDelete("remove-favorite")]
         public async Task<IActionResult> RemoveFavoriteItem([FromQuery] int userId, [FromQuery] int itemId)
         {
@@ -309,12 +276,12 @@ namespace API.Controllers
                 using var connection = new MySqlConnection(connStr);
                 await connection.OpenAsync();
 
-                string query = @"DELETE FROM favorites WHERE UserID = @UserID AND ItemID = @ItemID";
+                string query = @"DELETE FROM favorites WHERE UserID = @UserID AND ItemID = @ItemID"; // שאילתה שמוחקת שורה מהטבלת מועדפים
                 using var cmd = new MySqlCommand(query, connection);
-                cmd.Parameters.AddWithValue("@UserID", userId);
-                cmd.Parameters.AddWithValue("@ItemID", itemId);
+                cmd.Parameters.AddWithValue("@UserID", userId); // המשתמש שהסיר את הפריט
+                cmd.Parameters.AddWithValue("@ItemID", itemId); // הפריט שהוסר מהמועדפים
 
-                await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync();// ביצוע המחיקה בפועל
                 return Ok(new { Message = "Item removed from favorites" });
             }
             catch (Exception ex)
@@ -323,29 +290,29 @@ namespace API.Controllers
             }
         }
 
-        // ✅ קבלת כל המזהים של פריטי לבוש מועדפים של משתמש
-        [HttpGet("get-favorites/{userId}")]
+
+        [HttpGet("get-favorites/{userId}")] //קבלת כל הפריטים המועדפים לפי המשתמש
         public async Task<IActionResult> GetFavoriteItemIDs(int userId)
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
-            var favoriteItemIDs = new List<int>();
+            var favoriteItemIDs = new List<int>(); //רשימה ריקה שתכיל את כל הפריטים המועדפים
 
             try
             {
                 using var connection = new MySqlConnection(connStr);
                 await connection.OpenAsync();
 
-                string query = @"SELECT ItemID FROM favorites WHERE UserID = @UserID AND ItemID IS NOT NULL";
-                using var cmd = new MySqlCommand(query, connection);
-                cmd.Parameters.AddWithValue("@UserID", userId);
+                string query = @"SELECT ItemID FROM favorites WHERE UserID = @UserID AND ItemID IS NOT NULL"; //שאילתה המחזירה את מזהי הפריטים המועדפים של המשתמש
+                using var cmd = new MySqlCommand(query, connection); //יצירת הפקודה עם הפרמטרים כדי למנוע SQL Injection
+                cmd.Parameters.AddWithValue("@UserID", userId); // מזהה המשתמש
 
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
-                    favoriteItemIDs.Add(reader.GetInt32(0));
+                    favoriteItemIDs.Add(reader.GetInt32(0)); //הוספה לרשימה
                 }
 
-                return Ok(favoriteItemIDs);
+                return Ok(favoriteItemIDs); // החזרת הרשימה
             }
             catch (Exception ex)
             {
@@ -353,7 +320,9 @@ namespace API.Controllers
             }
         }
 
-        [HttpDelete("{itemId}")]
+
+
+        [HttpDelete("{itemId}")] //מחיקת פריט לבוש 
         public async Task<IActionResult> DeleteClothingItem(int itemId)
         {
             string connStr = _configuration.GetConnectionString("DefaultConnection");
@@ -366,7 +335,7 @@ namespace API.Controllers
 
                 try
                 {
-                    // 🔄 שלב 1: ניתוק התמונה מהפריט (ImageID = NULL)
+                    //  שלב 1: ניתוק התמונה מהפריט (ImageID = NULL)
                     var nullifyImageQuery = "UPDATE clothingitems SET ImageID = NULL WHERE ItemID = @ItemID";
                     using (var cmd = new MySqlCommand(nullifyImageQuery, connection, (MySqlTransaction)transaction))
                     {
@@ -374,7 +343,7 @@ namespace API.Controllers
                         await cmd.ExecuteNonQueryAsync();
                     }
 
-                    // 🧹 שלב 2: מחיקה מטבלת outfititems
+                    //  שלב 2: מחיקה מטבלת outfititems
                     var deleteOutfitItemsQuery = "DELETE FROM outfititems WHERE ItemID = @ItemID";
                     using (var cmd = new MySqlCommand(deleteOutfitItemsQuery, connection, (MySqlTransaction)transaction))
                     {
@@ -382,7 +351,7 @@ namespace API.Controllers
                         await cmd.ExecuteNonQueryAsync();
                     }
 
-                    // 🧹 שלב 3: מחיקת התמונה מהטבלה images לפי OwnerID
+                    //  שלב 3: מחיקת התמונה מהטבלה images לפי OwnerID
                     var deleteImageQuery = "DELETE FROM images WHERE OwnerID = @ItemID";
                     using (var cmd = new MySqlCommand(deleteImageQuery, connection, (MySqlTransaction)transaction))
                     {
@@ -390,14 +359,14 @@ namespace API.Controllers
                         await cmd.ExecuteNonQueryAsync();
                     }
 
-                    // 🧹 שלב 4: מחיקת הפריט עצמו
+                    //  שלב 4: מחיקת הפריט עצמו
                     var deleteItemQuery = "DELETE FROM clothingitems WHERE ItemID = @ItemID";
                     using (var cmd = new MySqlCommand(deleteItemQuery, connection, (MySqlTransaction)transaction))
                     {
                         cmd.Parameters.AddWithValue("@ItemID", itemId);
                         var rowsAffected = await cmd.ExecuteNonQueryAsync();
 
-                        if (rowsAffected == 0)
+                        if (rowsAffected == 0) // אם לא נמחקה אף שורה אין פריט כזה
                         {
                             await transaction.RollbackAsync();
                             return NotFound(new { Message = "❌ פריט הלבוש לא נמצא" });

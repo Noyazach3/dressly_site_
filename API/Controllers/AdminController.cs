@@ -21,18 +21,18 @@ namespace API.Controllers
             _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
-        [HttpGet("GetAllUsers")]
+        [HttpGet("GetAllUsers")] // שליפת כל המשתמשים מהמערכת
         public async Task<IActionResult> GetAllUsers()
         {
-            var users = new List<UserInfoModel>();
+            var users = new List<UserInfoModel>(); // יצירת רשימה ריקה לאחסון המשתמשים
             using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync();
 
-            var query = "SELECT * FROM Users";
-            using var command = new MySqlCommand(query, connection);
-            using var reader = await command.ExecuteReaderAsync();
+            var query = "SELECT * FROM Users"; // שאילתה המחזירה את כל המשתמשים
+            using var command = new MySqlCommand(query, connection);  
+            using var reader = await command.ExecuteReaderAsync(); // הרצת השאילתה
 
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync()) // הוספת משתמשים לרשימה
             {
                 users.Add(new UserInfoModel
                 {
@@ -46,8 +46,8 @@ namespace API.Controllers
             return Ok(users);
         }
 
-        // ✅ 2. מחיקת משתמש לפי ID (כולל תמונות, בגדים, אאוטפיטים, מועדפים)
-        [HttpDelete("user/{userId}")]
+        
+        [HttpDelete("user/{userId}")] // מחיקת משתמש לפי מזהה
         public async Task<IActionResult> DeleteUser(int userId)
         {
             using var connection = new MySqlConnection(_connectionString);
@@ -98,27 +98,28 @@ namespace API.Controllers
             }
         }
 
-        // ✅ 3. החזרת כמות משתמשים שאינם אדמין
-        [HttpGet("non-admin-count")]
+        
+        [HttpGet("non-admin-count")] // 
         public async Task<IActionResult> GetNonAdminUsersCount()
         {
             using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync();
 
-            var query = "SELECT COUNT(*) FROM users WHERE Role != 'Admin'";
+            var query = "SELECT COUNT(*) FROM users WHERE Role != 'Admin'"; // שאילתה המחזירה כמה משתמשים יש שהתפקיד שלהם שונה מאדמין
             using var command = new MySqlCommand(query, connection);
             var count = Convert.ToInt32(await command.ExecuteScalarAsync());
 
             return Ok(new { NonAdminUsersCount = count });
         }
 
-        [HttpGet("general")]
+        [HttpGet("general")] // פעולה המחזירה סטטיסטיקות כלליות
         public async Task<IActionResult> GetGeneralStats()
         {
             string connectionString = _configuration.GetConnectionString("DefaultConnection");
 
             try
             {
+                // משתנים לאחסון תוצאות
                 int totalUsers = 0;
                 int totalClothingItems = 0;
                 int totalOutfits = 0;
@@ -157,21 +158,28 @@ namespace API.Controllers
             }
         }
 
-        [HttpGet("most-popular-item")]
+
+        [HttpGet("most-popular-item")] // מחזירה את הפריט הפופולארי ביותר
         public async Task<ActionResult<PopularItem>> GetMostPopularItem()
         {
+            //  שאילתה שמבצעת:
+            // 1. קיבוץ לפי קטגוריה וצבע
+            // 2. סופרת כמה פעמים כל שילוב מופיע
+            // 3. ממיינת מהגבוה לנמוך
+            // 4. מחזירה רק את הפריט הכי נפוץ
             var query = @"
-        SELECT Category, ColorName, COUNT(*) AS ItemCount
-        FROM clothingitems
-        GROUP BY Category, ColorName
-        ORDER BY ItemCount DESC
-        LIMIT 1;
-    ";
+                        SELECT Category, ColorName, COUNT(*) AS ItemCount
+                        FROM clothingitems
+                        GROUP BY Category, ColorName
+                        ORDER BY ItemCount DESC
+                        LIMIT 1;
+                        ";
 
             var connectionString = _configuration.GetConnectionString("DefaultConnection");
-
             using var connection = new MySqlConnection(connectionString);
             await connection.OpenAsync();
+
+            // ביצוע השאילתה
 
             using var cmd = new MySqlCommand(query, connection);
             using var reader = await cmd.ExecuteReaderAsync();
