@@ -24,7 +24,6 @@ namespace ClassLibrary1.Models
 
         public DateTime? DateAdded { get; set; }
 
-        public DateTime? LastWornDate { get; set; }
 
         [Required(ErrorMessage = "שדה חובה")]
         public string UsageType { get; set; } // סוג השימוש
@@ -36,6 +35,7 @@ namespace ClassLibrary1.Models
         public User User { get; set; }
 
         public Color Color { get; set; }
+        public Image Image { get; set; } 
 
         public ICollection<OutfitItem> OutfitItems { get; set; }
 
